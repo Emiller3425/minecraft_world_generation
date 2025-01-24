@@ -112,25 +112,36 @@ int main()
     float vertices[] = {
         -0.5f, -0.5f, 0.0f,
         0.5f, -0.5f, 0.0f,
-        0.0f, 0.5f, 0.0f
+        0.5f, 0.5f, 0.0f,
+        -0.5f, 0.5f, 0.0f
+    };
+    unsigned int indices[] = {
+        0, 1, 3,
+        1, 2, 3
     };
 
     // VBO
-    unsigned int VBO, VAO;
+    unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
     // bind vertex arrray object first
     glBindVertexArray(VAO);
     // bind bufffer object to buffer target
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    // set vertex attribute pointers
+    // set vertex attribute pointer
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     // unbined our buffers by setting the buffer to 0
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    // do NOT unbind the EBO while a VAO is active as the bound element buffer object IS stored in the VAO; keep the EBO bound.
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); 
     glBindVertexArray(0); 
 
     while (!glfwWindowShouldClose(window))
@@ -139,18 +150,27 @@ int main()
         processInput(window);
 
         // render commands HERE
-        glClearColor(0.1f, 0.7f, 0.3f, 01.0f);
+        glClearColor(0.1f, 0.7f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shaderProgram);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
+        //glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
         glfwPollEvents();
+        
     }
 
+    //de-allocate all resources once they've outlived their purpose:
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+    glDeleteProgram(shaderProgram);
+
+    // terminate glfw de-allocating all used resources
     glfwTerminate();
     return 0;
 }
