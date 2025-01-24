@@ -7,6 +7,7 @@
 			"command": "/usr/bin/clang++",
 			"args": [
 				"-std=c++17",
+				"-DGL_SILENCE_DEPRECATION", 
 				"-fcolor-diagnostics",
 				"-fansi-escape-codes",
 				"-Wall",
