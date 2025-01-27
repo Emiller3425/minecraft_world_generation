@@ -1,10 +1,11 @@
 #version 330 core
 out vec4 FragColor;
-in vec3 ourColor;
-in vec3 ourPosition;
-uniform vec3 timeColor;
+
+in vec2 TexCoord;
+
+uniform sampler2D texture1;
+
 void main()
 {
-    vec3 finalColor = ourColor * timeColor;
-    FragColor = vec4(ourPosition, 1.0);
+    FragColor = texture(texture1, TexCoord);
 }
