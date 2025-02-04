@@ -181,6 +181,10 @@ int main()
 
         // bind texture
         glBindTexture(GL_TEXTURE_2D, texture);
+        
+        // render container
+        ourShader.use();
+
         // model matrix
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));  
@@ -193,8 +197,6 @@ int main()
         glm::mat4 projection;
         projection = glm::perspective(glm::radians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
 
-        // render container
-        ourShader.use();
         int modelLoc = glGetUniformLocation(ourShader.ID, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
@@ -203,6 +205,24 @@ int main()
 
         int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        // CAMERA STUFF
+
+        // Camera Postiion
+        glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
+
+        // Camera Direction
+        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
+        glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
+
+        // Right axis ---- we get this by taking the cross product of the camera direciton and a vertical vector
+        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec3 cameraRight = glm::normalize(glm::cross(up, cameraDirection));
+
+        // Right axis
+        glm::vec3 cameraUp = glm::cross(cameraDirection, cameraRight);
+
+        // TODO FINISH CAMERA SHIT ON UR OWN IDIOT
 
         // render elements
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
