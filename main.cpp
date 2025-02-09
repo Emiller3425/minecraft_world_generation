@@ -22,7 +22,7 @@ const unsigned int SRC_WIDTH = 800;
 const unsigned int SRC_HEIGHT = 600;
 
 // camera shit
-Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
+Camera camera(glm::vec3(0.0f, 13.0f, 12.0f));
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
@@ -161,17 +161,40 @@ int main()
         generateBindTextures(textures[i], path.c_str());
     }
 
-    glm::vec3 cubePositions[] = {
-        glm::vec3(0.0f, 0.0f, 0.0f),
-        glm::vec3(2.0f, 5.0f, -15.0f),
-        glm::vec3(-1.5f, -2.2f, -2.5f),
-        glm::vec3(-3.8f, -2.0f, -12.3f),
-        glm::vec3(2.4f, -0.4f, -3.5f),
-        glm::vec3(-1.7f, 3.0f, -7.5f),
-        glm::vec3(1.3f, -2.0f, -2.5f),
-        glm::vec3(1.5f, 2.0f, -2.5f),
-        glm::vec3(1.5f, 0.2f, -1.5f),
-        glm::vec3(-1.3f, 1.0f, -1.5f)};
+    glm::vec3 cubePositions[512];
+
+    int track = 0;
+
+    for (int i = 0; i < 8; i++) {
+        // cubePositions[i] = glm::vec3(static_cast<float>(i), 0.0f, 0.0f);
+        for (int ii = 0; ii < 8; ii++) {
+            //  cubePositions[i + (ii * 8)] = glm::vec3(static_cast<float>(i), static_cast<float>(ii), 0.0f);
+            for (int iii = 0; iii < 8; iii++) {
+                cubePositions[(i * 64) + (ii + (iii * 8))] = glm::vec3(static_cast<float>(i), static_cast<float>(ii), static_cast<float>(iii));
+                cout << (i * 64) + (ii + (iii * 8));
+                cout << "\n";
+            }
+        }
+    }
+
+    // glm::vec3 cubePositions[] = {
+    //     glm::vec3(0.0f, 0.0f, 0.0f),
+    //     glm::vec3(1.0f, 0.0f, 0.0f),
+    //     glm::vec3(1.0f, 1.0f, 0.0f),
+    //     glm::vec3(1.0f, 1.0f, 1.0f),
+    //     glm::vec3(0.0f, 1.0f, 0.0f),
+    //     glm::vec3(0.0f, 1.0f, 1.0f),
+    //     glm::vec3(0.0f, 0.0f, 1.0f),
+    //     glm::vec3(1.0f, 0.0f, 1.0f),
+    //     // glm::vec3(-1.5f, -2.2f, -2.5f),
+    //     // glm::vec3(-3.8f, -2.0f, -12.3f),
+    //     // glm::vec3(2.4f, -0.4f, -3.5f),
+    //     // glm::vec3(-1.7f, 3.0f, -7.5f),
+    //     // glm::vec3(1.3f, -2.0f, -2.5f),
+    //     // glm::vec3(1.5f, 2.0f, -2.5f),
+    //     // glm::vec3(1.5f, 0.2f, -1.5f),
+    //     // glm::vec3(-1.3f, 1.0f, -1.5f)
+    //     };
 
     ourShader.use();
 
@@ -185,7 +208,7 @@ int main()
         processInput(window);
 
         // render commands
-        glClearColor(0.1f, 0.1f, 0.3f, 1.0f);
+        glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -215,12 +238,10 @@ int main()
 
         // render elements
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < size(cubePositions); i++)
         {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             ourShader.setMat4("model", model);
 
             // 2) Draw the four side faces  (indices 0..23) with 0.png
