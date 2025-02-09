@@ -5,9 +5,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
-#include "shader.h"
-#include "stb_image.h"
-#include "camera.h"
+#include "headers/shader.h"
+#include "headers/stb_image.h"
+#include "headers/camera.h"
 
 using namespace std;
 // buffer call back and input funciton definitions
@@ -46,7 +46,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     // Initialize window
-    GLFWwindow *window = glfwCreateWindow(SRC_HEIGHT, SRC_WIDTH, "Fuck Me", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SRC_WIDTH, SRC_HEIGHT, "Fuck Me", NULL, NULL);
     if (window == NULL)
     {
         cout << "Failed to create window" << endl;
