@@ -7,6 +7,7 @@
 #include <iostream>
 #include "shader.h"
 #include "stb_image.h"
+#include "camera.h"
 
 using namespace std;
 // buffer call back and input funciton definitions
@@ -16,14 +17,12 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void generateBindTextures(unsigned int &texture, const char *path);
 
+// window size
+const unsigned int SRC_WIDTH = 800;
+const unsigned int SRC_HEIGHT = 600;
+
 // camera shit
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-glm::vec3 direction;\
-float fov = 45.0f;
-float yaw = -90.0f;
-float pitch = 0.0f;
+Camera camera(glm::vec3(0.0f, 0.0f, 3.0f));
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
@@ -47,7 +46,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
     // Initialize window
-    GLFWwindow *window = glfwCreateWindow(800, 600, "Fuck Me", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(SRC_HEIGHT, SRC_WIDTH, "Fuck Me", NULL, NULL);
     if (window == NULL)
     {
         cout << "Failed to create window" << endl;
@@ -197,17 +196,12 @@ int main()
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-        // Camera Direction
-        glm::vec3 cameraTarget = glm::vec3(0.0f, 0.0f, 0.0f);
-        glm::vec3 cameraDirection = glm::normalize(cameraPos - cameraTarget);
-
         // define projection matrix
         glm::mat4 projection;
-        projection = glm::perspective(glm::radians(fov), 800.0f / 600.0f, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
 
         // View Matrix
-        glm::mat4 view;
-        view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
+        glm::mat4 view = camera.GetViewMatrix();
 
         // Unifp=orm Matrices
         int modelLoc = glGetUniformLocation(ourShader.ID, "model");
@@ -263,22 +257,21 @@ void processInput(GLFWwindow *window)
     {
         glfwSetWindowShouldClose(window, true);
     }
-    const float cameraSpeed = 3.0f * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
-        cameraPos += cameraSpeed * cameraFront;
+        camera.ProcessKeyboard(FORWARD, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
-        cameraPos -= cameraSpeed * cameraFront;
+        camera.ProcessKeyboard(BACKWARD, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        camera.ProcessKeyboard(LEFT, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+        camera.ProcessKeyboard(RIGHT, deltaTime);
     }
 }
 
@@ -303,26 +296,11 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
-    yaw += xoffset;
-    pitch += yoffset;
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(direction);
+    camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    fov -= (float)yoffset;
-    if (fov < 30.0f) 
-        fov = 30.0f;
-    if (fov > 60.0f)
-     fov = 60.0f;
+    camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
 void generateBindTextures(unsigned int &texture, const char *path)
