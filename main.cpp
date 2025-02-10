@@ -8,6 +8,9 @@
 #include "headers/shader.h"
 #include "headers/stb_image.h"
 #include "headers/camera.h"
+#include "headers/chunk.h"
+#include "headers/mesh.h"
+
 
 using namespace std;
 // buffer call back and input funciton definitions
@@ -16,13 +19,14 @@ void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void generateBindTextures(unsigned int &texture, const char *path);
+void drawCube(unsigned int textures[]);
 
 // window size
 const unsigned int SRC_WIDTH = 800;
 const unsigned int SRC_HEIGHT = 600;
 
 // camera shit
-Camera camera(glm::vec3(0.0f, 13.0f, 12.0f));
+Camera camera(glm::vec3(0.0f, 18.0f, 20.0f));
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
@@ -87,10 +91,10 @@ int main()
     float vertices[] = {
         // Face -Z (front)
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
 
         // Face +Z (back)
@@ -111,10 +115,10 @@ int main()
 
         // Face +X (right)
         0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
         0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
         0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
 
         // Face -Y (bottom)
@@ -127,11 +131,16 @@ int main()
 
         // Face +Y (top)
         -0.5f, 0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
         -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 0.0f};
+
+    // only render outside of vertices
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+    glFrontFace(GL_CCW);
 
     // VBO
     unsigned int VBO, VAO;
@@ -161,40 +170,15 @@ int main()
         generateBindTextures(textures[i], path.c_str());
     }
 
-    glm::vec3 cubePositions[512];
+    Chunk chunks[5] = {
+        Chunk(glm::vec3(0.0f, 0.0f, 0.0f)),
+        Chunk(glm::vec3(16.0f, 0.0f, 0.0f)),
+        Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)),
+        Chunk(glm::vec3(0.0f, 0.0f, 16.0f)),
+        Chunk(glm::vec3(0.0f, 0.0f, -16.0f))
+        };
 
-    int track = 0;
-
-    for (int i = 0; i < 8; i++) {
-        // cubePositions[i] = glm::vec3(static_cast<float>(i), 0.0f, 0.0f);
-        for (int ii = 0; ii < 8; ii++) {
-            //  cubePositions[i + (ii * 8)] = glm::vec3(static_cast<float>(i), static_cast<float>(ii), 0.0f);
-            for (int iii = 0; iii < 8; iii++) {
-                cubePositions[(i * 64) + (ii + (iii * 8))] = glm::vec3(static_cast<float>(i), static_cast<float>(ii), static_cast<float>(iii));
-                cout << (i * 64) + (ii + (iii * 8));
-                cout << "\n";
-            }
-        }
-    }
-
-    // glm::vec3 cubePositions[] = {
-    //     glm::vec3(0.0f, 0.0f, 0.0f),
-    //     glm::vec3(1.0f, 0.0f, 0.0f),
-    //     glm::vec3(1.0f, 1.0f, 0.0f),
-    //     glm::vec3(1.0f, 1.0f, 1.0f),
-    //     glm::vec3(0.0f, 1.0f, 0.0f),
-    //     glm::vec3(0.0f, 1.0f, 1.0f),
-    //     glm::vec3(0.0f, 0.0f, 1.0f),
-    //     glm::vec3(1.0f, 0.0f, 1.0f),
-    //     // glm::vec3(-1.5f, -2.2f, -2.5f),
-    //     // glm::vec3(-3.8f, -2.0f, -12.3f),
-    //     // glm::vec3(2.4f, -0.4f, -3.5f),
-    //     // glm::vec3(-1.7f, 3.0f, -7.5f),
-    //     // glm::vec3(1.3f, -2.0f, -2.5f),
-    //     // glm::vec3(1.5f, 2.0f, -2.5f),
-    //     // glm::vec3(1.5f, 0.2f, -1.5f),
-    //     // glm::vec3(-1.3f, 1.0f, -1.5f)
-    //     };
+    Mesh mesh(chunks, size(chunks));
 
     ourShader.use();
 
@@ -238,25 +222,15 @@ int main()
 
         // render elements
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        for (int i = 0; i < size(cubePositions); i++)
+        for (int i = 0; i < size(mesh.renderCubes); i++)
         {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            ourShader.setMat4("model", model);
+                    glm::mat4 model = glm::mat4(1.0f);
+                    model = glm::translate(model, mesh.renderCubes[i]);
+                    ourShader.setMat4("model", model);
 
-            // 2) Draw the four side faces  (indices 0..23) with 0.png
-            glBindTexture(GL_TEXTURE_2D, textures[0]);
-            glDrawArrays(GL_TRIANGLES, 0, 24);
-
-            // 3) Draw the bottom face (indices 24..29) with 2.png
-            glBindTexture(GL_TEXTURE_2D, textures[2]);
-            glDrawArrays(GL_TRIANGLES, 24, 6);
-
-            // 4) Draw the top face (indices 30..35) with 1.png
-            glBindTexture(GL_TEXTURE_2D, textures[1]);
-            glDrawArrays(GL_TRIANGLES, 30, 6);
+                    // draw cube
+                    drawCube(textures);
         }
-        glDrawArrays(GL_TRIANGLES, 0, 36);
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
@@ -303,7 +277,8 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 
 void mouse_callback(GLFWwindow *window, double xpos, double ypos)
 {
-    if (firstMouse) {
+    if (firstMouse)
+    {
         lastX = xpos;
         lastY = ypos;
         firstMouse = false;
@@ -320,7 +295,8 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos)
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
+void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
+{
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
@@ -355,4 +331,19 @@ void generateBindTextures(unsigned int &texture, const char *path)
         cout << "Failed to load texture\n";
     }
     stbi_image_free(data);
+}
+
+void drawCube(unsigned int textures[])
+{
+    // 2) Draw the four side faces  (indices 0..23) with 0.png
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
+    glDrawArrays(GL_TRIANGLES, 0, 24);
+
+    // 3) Draw the bottom face (indices 24..29) with 2.png
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    glDrawArrays(GL_TRIANGLES, 24, 6);
+
+    // 4) Draw the top face (indices 30..35) with 1.png
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
+    glDrawArrays(GL_TRIANGLES, 30, 6);
 }

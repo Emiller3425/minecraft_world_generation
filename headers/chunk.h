@@ -10,10 +10,28 @@
 #include <iostream>
 
 class Chunk {
+
     public:
-        int x = 2;
+    const unsigned int CHUNK_SIZE = 16;
+    glm::vec3 cubePositions [4096];
+    glm::vec3 origin;
+
+    Chunk(glm::vec3 originVector) {
+        origin = originVector;
+        for (int i = 0; i < CHUNK_SIZE; i++) {
+            for (int ii = 0; ii < CHUNK_SIZE; ii++) {
+                for (int iii = 0; iii < CHUNK_SIZE; iii++) {
+                    cubePositions[(i * (CHUNK_SIZE * CHUNK_SIZE)) + (ii + (iii * CHUNK_SIZE))] = glm::vec3(static_cast<float>(i + origin.x), static_cast<float>(ii + origin.y), static_cast<float>(iii + origin.z));
+                }
+            }
+        }
+    }
+
+    glm::vec3 GetOrigin() {
+        return origin;
+    }
     private:
-        int i = 0;
+    // IDK what to put here yet
 };
 
 #endif
