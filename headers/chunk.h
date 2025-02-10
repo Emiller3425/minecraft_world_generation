@@ -11,6 +11,8 @@
 
 class Chunk {
 
+    // TODO: add terrain generation using perlin noise and linear interpolation
+
     public:
     const unsigned int CHUNK_SIZE = 16;
     glm::vec3 cubePositions [4096];
