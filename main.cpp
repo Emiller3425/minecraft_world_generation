@@ -170,12 +170,11 @@ int main()
         generateBindTextures(textures[i], path.c_str());
     }
 
-    Chunk chunks[5] = {
+    Chunk chunks[4] = {
         Chunk(glm::vec3(0.0f, 0.0f, 0.0f)),
         Chunk(glm::vec3(16.0f, 0.0f, 0.0f)),
         Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)),
         Chunk(glm::vec3(0.0f, 0.0f, 16.0f)),
-        Chunk(glm::vec3(0.0f, 0.0f, -16.0f))
         };
 
     Mesh mesh(chunks, size(chunks));

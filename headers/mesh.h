@@ -44,7 +44,6 @@ public:
                     renderCubes.push_back(cubes[i]);
                 }
         }
-        cout << size(renderCubes);
     }
 
 private:
