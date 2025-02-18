@@ -18,6 +18,7 @@
         "random": "cpp",
         "system_error": "cpp",
         "type_traits": "cpp",
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "unordered_map": "cpp"
     }
 }

@@ -190,7 +190,6 @@ int main()
         // process input
         processInput(window);
 
-        // render commands
         glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

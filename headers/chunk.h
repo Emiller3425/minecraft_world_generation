@@ -8,23 +8,74 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 #include <math.h>
+#include <random>
+
+using namespace std;
+
+
+const int AIR = 0;
+const int BLOCK = 1;
+
+float perlin(float x, float y);
+float dotGridGradient(int ix, int iy, float x, float y);
+float interpolate(float a0, float a1, float w);
+glm::vec2 randomGradient(int ix, int iy);
+
+using namespace std;
 
 class Chunk {
 
     // TODO: add terrain generation using perlin noise and linear interpolation
 
     public:
-    const unsigned int CHUNK_SIZE = 16;
-    glm::vec3 cubePositions [4096];
+    // chunk size
+    static const unsigned int CHUNK_SIZE = 16;
+    // cubePositions
+    glm::vec3 cubePositions [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    // cubeTypes
+    float cubeType [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    
+    // coordinate origin for this chunk
     glm::vec3 origin;
 
     Chunk(glm::vec3 originVector) {
+        // Vector for origin coordinates
         origin = originVector;
-        for (int i = 0; i < CHUNK_SIZE; i++) {
-            for (int ii = 0; ii < CHUNK_SIZE; ii++) {
-                for (int iii = 0; iii < CHUNK_SIZE; iii++) {
-                    cubePositions[(i * (CHUNK_SIZE * CHUNK_SIZE)) + (ii + (iii * CHUNK_SIZE))] = glm::vec3(static_cast<float>(i + origin.x), static_cast<float>(ii + origin.y), static_cast<float>(iii + origin.z));
+        // scaler for noise
+        float noiseScaler = 0.05f;
+        // decide max terrain height
+        float maxTerrainHeight = (float)CHUNK_SIZE;
+        for (int x = 0; x < CHUNK_SIZE; x++) {
+            for (int z = 0; z < CHUNK_SIZE; z++) {
+                // Sample perlin for height at x,z
+                float rawNoise = perlin(( x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler);
+
+                // noise returns [-1, 1] normalize to [0, 1]
+                float normalizedNoise = (rawNoise + 1.0f) / 2.0f;
+
+                // Scale to [0, maxTerrainHeight]
+                float terrainHeightF = normalizedNoise * maxTerrainHeight;
+
+                // Turn into an int for the cutoff
+                int terrainHeight = (int)floor(terrainHeightF);
+
+                for (int y = 0; y < CHUNK_SIZE; y++) {
+                    int index = (x * CHUNK_SIZE * CHUNK_SIZE) + (y + (z * CHUNK_SIZE));
+                    // Actual world position of this block
+                    cubePositions[index] = glm::vec3(
+                        static_cast<float>(x + origin.x),
+                        static_cast<float>(y + origin.y),
+                        static_cast<float>(z + origin.z)
+                    );
+
+                    // set block type
+                    if (y <= terrainHeight) {
+                        cubeType[index] = BLOCK;
+                    } else {
+                        cubeType[index] = AIR;
+                    }
                 }
             }
         }
@@ -36,10 +87,10 @@ class Chunk {
         unsigned a = ix, b = iy;
         a *= 3284157443;
 
-        b ^= a << s | a > w - s;
+        b ^= a << s | (a > w - s);
         b *= 1911520717;
 
-        a ^= b << s | b >> w - s;
+        a ^= b << s | (b >> (w - s));
         b *= 2048419325;
         float random = a * (3.14159265 / ~(~0u >> 1)); // in [0, 2*pi]
 
