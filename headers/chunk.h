@@ -23,6 +23,8 @@ float dotGridGradient(int ix, int iy, float x, float y);
 float interpolate(float a0, float a1, float w);
 glm::vec2 randomGradient(int ix, int iy);
 
+// TODO seeds
+
 using namespace std;
 
 class Chunk {
