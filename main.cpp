@@ -187,11 +187,16 @@ int main()
     }
 
 
-    Chunk chunks[4] = {
+    Chunk chunks[9] = {
         Chunk(glm::vec3(0.0f, 0.0f, 0.0f)),
-        Chunk(glm::vec3(16.0f, 0.0f, 0.0f)),
         Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)),
         Chunk(glm::vec3(0.0f, 0.0f, 16.0f)),
+        Chunk(glm::vec3(16.0f, 0.0f, 0.0f)),
+        Chunk(glm::vec3(16.0f, 0.0f, 16.0f)),
+        Chunk(glm::vec3(-16.0f, 0.0f, -16.0f)),
+        Chunk(glm::vec3(-16.0f, 0.0f, 16.0f)),
+        Chunk(glm::vec3(0.0f, 0.0f, -16.0f)),
+        Chunk(glm::vec3(16.0f, 0.0f, -16.0f)),
         };
 
     Mesh mesh(chunks, size(chunks));

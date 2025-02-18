@@ -33,8 +33,6 @@ using namespace std;
 
 class Chunk {
 
-    // TODO: add terrain generation using perlin noise and linear interpolation, also use a block class with a position and type variable
-
     public:
     // chunk size
     static const unsigned int CHUNK_SIZE = 16;
@@ -50,7 +48,7 @@ class Chunk {
         // scaler for noise
         float noiseScaler = 0.05f;
         // decide max terrain height
-        float maxTerrainHeight = (float)CHUNK_SIZE;
+        float maxTerrainHeight = (float)CHUNK_SIZE - 1;
         for (int x = 0; x < CHUNK_SIZE; x++) {
             for (int z = 0; z < CHUNK_SIZE; z++) {
                 // Sample perlin for height at x,z
@@ -76,7 +74,6 @@ class Chunk {
                     );
 
                     // set block type
-                    // TODO fix block type setting
                     if (y == terrainHeight) {
                         blocks[index].blockType = GRASS;
                     } else if (y < terrainHeight) {
@@ -103,6 +100,7 @@ class Chunk {
         float random = a * (3.14159265 / ~(~0u >> 1)); // in [0, 2*pi]
 
         glm::vec2 v;
+        
         v.x = sin(random);
         v.y = cos(random);
 
@@ -151,7 +149,7 @@ class Chunk {
         // Final step: interpolate between the two perviously interpolated values, now in y
         float value = interpolate(ix0, ix1, sy);
 
-        return value;
+        return glm::clamp(value, -1.0f, 1.0f);
     }
 
     glm::vec3 GetOrigin() {
