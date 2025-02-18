@@ -10,6 +10,7 @@
 #include "headers/camera.h"
 #include "headers/chunk.h"
 #include "headers/mesh.h"
+#include "headers/block.h"
 
 
 using namespace std;
@@ -163,12 +164,28 @@ int main()
 
     // generate and bind texture id
     unsigned int texture1 = 0, texture2 = 0, texture3 = 0;
-    unsigned int textures[3] = {texture1, texture2, texture3};
-    for (int i = 0; i < size(textures); i++)
+    unsigned int grass_textures[3] = {texture1, texture2, texture3};
+    for (int i = 0; i < size(grass_textures); i++)
     {
         string path = "graphics/grass_block/" + to_string(i) + ".png";
-        generateBindTextures(textures[i], path.c_str());
+        generateBindTextures(grass_textures[i], path.c_str());
     }
+    unsigned int texture4 = 0;
+    unsigned int dirt_textures[1] = {texture4};
+    for (int i = 0; i < size(grass_textures); i++)
+    {
+        string path = "graphics/dirt_block/" + to_string(i) + ".png";
+        generateBindTextures(dirt_textures[i], path.c_str());
+    }
+
+    unsigned int texture5 = 0;
+    unsigned int sand_textures[1] = {texture5};
+    for (int i = 0; i < size(grass_textures); i++)
+    {
+        string path = "graphics/sand_block/" + to_string(i) + ".png";
+        generateBindTextures(sand_textures[i], path.c_str());
+    }
+
 
     Chunk chunks[4] = {
         Chunk(glm::vec3(0.0f, 0.0f, 0.0f)),
@@ -180,6 +197,8 @@ int main()
     Mesh mesh(chunks, size(chunks));
 
     ourShader.use();
+
+    // TODO, infinite world in main game loop
 
     while (!glfwWindowShouldClose(window))
     {
@@ -223,11 +242,17 @@ int main()
         for (int i = 0; i < size(mesh.renderCubes); i++)
         {
                     glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::translate(model, mesh.renderCubes[i]);
+                    model = glm::translate(model, mesh.renderCubes[i].blockPosition);
                     ourShader.setMat4("model", model);
 
                     // draw cube
-                    drawCube(textures);
+                    if (mesh.renderCubes[i].blockType == GRASS) {
+                        drawCube(grass_textures);
+                    } else if (mesh.renderCubes[i].blockType == DIRT) {
+                        drawCube(dirt_textures);
+                    } else {
+                        drawCube(sand_textures);
+                    }
         }
 
         // check and call events and swap the buffers

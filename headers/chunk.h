@@ -12,11 +12,15 @@
 #include <math.h>
 #include <random>
 
+#include "block.h"
+
 using namespace std;
 
 
 const int AIR = 0;
-const int BLOCK = 1;
+const int GRASS = 1;
+const int DIRT = 2;
+const int SAND = 3;
 
 float perlin(float x, float y);
 float dotGridGradient(int ix, int iy, float x, float y);
@@ -29,15 +33,13 @@ using namespace std;
 
 class Chunk {
 
-    // TODO: add terrain generation using perlin noise and linear interpolation
+    // TODO: add terrain generation using perlin noise and linear interpolation, also use a block class with a position and type variable
 
     public:
     // chunk size
     static const unsigned int CHUNK_SIZE = 16;
-    // cubePositions
-    glm::vec3 cubePositions [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
-    // cubeTypes
-    float cubeType [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+    // array of blocks in chunk
+    Block blocks [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
     
     // coordinate origin for this chunk
     glm::vec3 origin;
@@ -66,17 +68,21 @@ class Chunk {
                 for (int y = 0; y < CHUNK_SIZE; y++) {
                     int index = (x * CHUNK_SIZE * CHUNK_SIZE) + (y + (z * CHUNK_SIZE));
                     // Actual world position of this block
-                    cubePositions[index] = glm::vec3(
+
+                    blocks[index].blockPosition = glm::vec3(
                         static_cast<float>(x + origin.x),
                         static_cast<float>(y + origin.y),
                         static_cast<float>(z + origin.z)
                     );
 
                     // set block type
-                    if (y <= terrainHeight) {
-                        cubeType[index] = BLOCK;
+                    // TODO fix block type setting
+                    if (y == terrainHeight) {
+                        blocks[index].blockType = GRASS;
+                    } else if (y < terrainHeight) {
+                        blocks[index].blockType = DIRT;
                     } else {
-                        cubeType[index] = AIR;
+                        blocks[index].blockType = AIR;
                     }
                 }
             }
