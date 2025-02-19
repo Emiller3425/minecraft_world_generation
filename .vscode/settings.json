@@ -19,6 +19,14 @@
         "system_error": "cpp",
         "type_traits": "cpp",
         "iostream": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "__split_buffer": "cpp",
+        "string": "cpp",
+        "unordered_set": "cpp",
+        "functional": "cpp",
+        "__locale": "cpp",
+        "string_view": "cpp",
+        "variant": "cpp",
+        "__threading_support": "cpp"
     }
 }

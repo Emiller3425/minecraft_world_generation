@@ -21,31 +21,30 @@ using namespace std;
 class Mesh
 {
 public:
-    std::vector<Block> renderCubes;
+    std::unordered_set<Block> renderCubes;
     std::unordered_set<glm::vec3> blockPositions;
 
-    Mesh(Chunk chunks[], size_t chunkSize)
+    Mesh(unordered_set<Chunk> chunks)
     {
-        // Insert all block positions into the set
-        for (int i = 0; i < chunkSize; i++)
+        // insert blocks into set
+        for (const auto &chunk : chunks)
         {
-            for (int ii = 0; ii < size(chunks[i].blocks); ii++)
+            for (int i = 0; i < size(chunk.blocks); i++)
             {
-                if (chunks[i].blocks[ii].blockType != AIR)
-                {
-                    blockPositions.insert(chunks[i].blocks[ii].blockPosition);
+                if (chunk.blocks[i].blockType != AIR) {
+                    blockPositions.insert(chunk.blocks[i].blockPosition);
                 }
             }
         }
 
         // Iterate again to determine visible blocks
-        for (int i = 0; i < chunkSize; i++)
+        for (const auto &chunk : chunks)
         {
-            for (int ii = 0; ii < size(chunks[i].blocks); ii++)
+            for (int i = 0; i < size(chunk.blocks); i++)
             {
-                if (chunks[i].blocks[ii].blockType != AIR)
+                if (chunk.blocks[i].blockType != AIR)
                 {
-                    const glm::vec3 &pos = chunks[i].blocks[ii].blockPosition;
+                    const glm::vec3 &pos = chunk.blocks[i].blockPosition;
 
                     // Check if block is exposed (i.e., it has at least one open face)
                     if (
@@ -56,7 +55,46 @@ public:
                         blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
                         blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
                     {
-                        renderCubes.push_back(chunks[i].blocks[ii]);
+                        renderCubes.insert(chunk.blocks[i]);
+                    }
+                }
+            }
+        }
+    }
+
+    void updateMesh(unordered_set<Chunk> chunks) {
+        // clear current render cubes
+        renderCubes.clear();
+        // insert blocks into set
+        for (const auto &chunk : chunks)
+        {
+            for (int i = 0; i < size(chunk.blocks); i++)
+            {
+                if (chunk.blocks[i].blockType != AIR) {
+                    blockPositions.insert(chunk.blocks[i].blockPosition);
+                }
+            }
+        }
+
+        // Iterate again to determine visible blocks
+        for (const auto &chunk : chunks)
+        {
+            for (int i = 0; i < size(chunk.blocks); i++)
+            {
+                if (chunk.blocks[i].blockType != AIR)
+                {
+                    const glm::vec3 &pos = chunk.blocks[i].blockPosition;
+
+                    // Check if block is exposed (i.e., it has at least one open face)
+                    if (
+                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    {
+                        renderCubes.insert(chunk.blocks[i]);
                     }
                 }
             }

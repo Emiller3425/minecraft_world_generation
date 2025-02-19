@@ -11,11 +11,11 @@
 #include <unordered_map>
 #include <math.h>
 #include <random>
+#include <functional> // For std::hash
 
 #include "block.h"
 
 using namespace std;
-
 
 const int AIR = 0;
 const int GRASS = 1;
@@ -27,32 +27,36 @@ float dotGridGradient(int ix, int iy, float x, float y);
 float interpolate(float a0, float a1, float w);
 glm::vec2 randomGradient(int ix, int iy);
 
-// TODO seeds
+// TODO seeds and fix perlin noise being outside of [-1, 1]
 
 using namespace std;
 
-class Chunk {
+class Chunk
+{
 
-    public:
+public:
     // chunk size
     static const unsigned int CHUNK_SIZE = 16;
     // array of blocks in chunk
-    Block blocks [CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
-    
+    Block blocks[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+
     // coordinate origin for this chunk
     glm::vec3 origin;
 
-    Chunk(glm::vec3 originVector) {
+    Chunk(glm::vec3 originVector)
+    {
         // Vector for origin coordinates
         origin = originVector;
         // scaler for noise
         float noiseScaler = 0.05f;
         // decide max terrain height
         float maxTerrainHeight = (float)CHUNK_SIZE - 1;
-        for (int x = 0; x < CHUNK_SIZE; x++) {
-            for (int z = 0; z < CHUNK_SIZE; z++) {
+        for (int x = 0; x < CHUNK_SIZE; x++)
+        {
+            for (int z = 0; z < CHUNK_SIZE; z++)
+            {
                 // Sample perlin for height at x,z
-                float rawNoise = perlin(( x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler);
+                float rawNoise = perlin((x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler);
 
                 // noise returns [-1, 1] normalize to [0, 1]
                 float normalizedNoise = (rawNoise + 1.0f) / 2.0f;
@@ -63,22 +67,31 @@ class Chunk {
                 // Turn into an int for the cutoff
                 int terrainHeight = (int)floor(terrainHeightF);
 
-                for (int y = 0; y < CHUNK_SIZE; y++) {
+                for (int y = 0; y < CHUNK_SIZE; y++)
+                {
                     int index = (x * CHUNK_SIZE * CHUNK_SIZE) + (y + (z * CHUNK_SIZE));
                     // Actual world position of this block
 
                     blocks[index].blockPosition = glm::vec3(
                         static_cast<float>(x + origin.x),
                         static_cast<float>(y + origin.y),
-                        static_cast<float>(z + origin.z)
-                    );
+                        static_cast<float>(z + origin.z));
 
                     // set block type
-                    if (y == terrainHeight) {
+                    if (y == terrainHeight && y > 3)
+                    {
                         blocks[index].blockType = GRASS;
-                    } else if (y < terrainHeight) {
+                    }
+                    else if (y < terrainHeight && y > 3)
+                    {
                         blocks[index].blockType = DIRT;
-                    } else {
+                    }
+                    else if (y <= 3)
+                    {
+                        blocks[index].blockType = SAND;
+                    }
+                    else
+                    {
                         blocks[index].blockType = AIR;
                     }
                 }
@@ -86,7 +99,8 @@ class Chunk {
         }
     }
 
-    glm::vec2 randomGradient(int ix, int iy) {
+    glm::vec2 randomGradient(int ix, int iy)
+    {
         const unsigned w = 8 * sizeof(unsigned);
         const unsigned s = w / 2;
         unsigned a = ix, b = iy;
@@ -100,7 +114,7 @@ class Chunk {
         float random = a * (3.14159265 / ~(~0u >> 1)); // in [0, 2*pi]
 
         glm::vec2 v;
-        
+
         v.x = sin(random);
         v.y = cos(random);
 
@@ -108,7 +122,8 @@ class Chunk {
     }
 
     // Computes the dot product of the distance of gradient vecotrs.
-    float dotGridGradient(int ix, int iy, float x, float y) {
+    float dotGridGradient(int ix, int iy, float x, float y)
+    {
         glm::vec2 gradient = randomGradient(ix, iy);
 
         // Compute the distance vector
@@ -118,14 +133,16 @@ class Chunk {
         // Compute the dot-product
         return (dx * gradient.x + dy * gradient.y);
     }
-    
-    float interpolate(float a0, float a1, float w) {
-        return (a1 -a0) * (3.0f - w * 2.0f) * w * w + a0;
+
+    float interpolate(float a0, float a1, float w)
+    {
+        return (a1 - a0) * (3.0f - w * 2.0f) * w * w + a0;
     }
 
     // Sample Perlin noise at coordinates x, y
-    float perlin(float x, float y) {
-        
+    float perlin(float x, float y)
+    {
+
         // Determine grid cell corner coordinates
         int x0 = (int)x;
         int y0 = (int)y;
@@ -152,11 +169,29 @@ class Chunk {
         return glm::clamp(value, -1.0f, 1.0f);
     }
 
-    glm::vec3 GetOrigin() {
+    glm::vec3 GetOrigin()
+    {
         return origin;
     }
-    private:
+
+    bool operator==(const Chunk& other) const {
+        return origin == other.origin;
+    }
+
+private:
     // IDK what to put here yet
 };
+
+namespace std {
+    template <>
+    struct hash<Chunk> {
+        size_t operator()(const Chunk& chunk) const {
+            size_t h1 = hash<float>()(chunk.origin.x);
+            size_t h2 = hash<float>()(chunk.origin.y);
+            size_t h3 = hash<float>()(chunk.origin.z);
+            return h1 ^ (h2 << 1) ^ (h3 << 2); // Combine hashes
+        }
+    };
+}
 
 #endif

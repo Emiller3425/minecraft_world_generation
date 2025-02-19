@@ -31,6 +31,8 @@ public:
     bool operator==(const Block& other) const {
         return blockPosition == other.blockPosition;
     }
+    private:
+    // private method
 };
 
 // Custom hash function for glm::vec3
@@ -39,6 +41,19 @@ namespace std {
     struct hash<glm::vec3> {
         size_t operator()(const glm::vec3& v) const {
             return hash<float>()(v.x) ^ hash<float>()(v.y) ^ hash<float>()(v.z);
+        }
+    };
+
+    template <>
+    struct hash<Block> {
+        size_t operator()(const Block &block) const {
+            // Compute hashes for each component of blockPosition
+            size_t h1 = std::hash<float>()(block.blockPosition.x);
+            size_t h2 = std::hash<float>()(block.blockPosition.y);
+            size_t h3 = std::hash<float>()(block.blockPosition.z);
+            // Combine the hash values. There are many ways to combine hashes;
+            // here we use a simple XOR and bit shifting.
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
         }
     };
 }

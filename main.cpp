@@ -21,13 +21,14 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void generateBindTextures(unsigned int &texture, const char *path);
 void drawCube(unsigned int textures[]);
+void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh);
 
 // window size
 const unsigned int SRC_WIDTH = 800;
 const unsigned int SRC_HEIGHT = 600;
 
 // camera shit
-Camera camera(glm::vec3(0.0f, 18.0f, 20.0f));
+Camera camera(glm::vec3(8.0f, 20.0f, 8.0f));
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
@@ -81,7 +82,6 @@ int main()
     }
     // define shaders
     Shader ourShader("shaders/shader.vs", "shaders/shader.fs");
-    // float xoffset = 0.7f;
 
     // tell openGL the size of the window
     int fbWidth, fbHeight;
@@ -187,23 +187,22 @@ int main()
     }
 
 
-    Chunk chunks[9] = {
-        Chunk(glm::vec3(0.0f, 0.0f, 0.0f)),
-        Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)),
-        Chunk(glm::vec3(0.0f, 0.0f, 16.0f)),
-        Chunk(glm::vec3(16.0f, 0.0f, 0.0f)),
-        Chunk(glm::vec3(16.0f, 0.0f, 16.0f)),
-        Chunk(glm::vec3(-16.0f, 0.0f, -16.0f)),
-        Chunk(glm::vec3(-16.0f, 0.0f, 16.0f)),
-        Chunk(glm::vec3(0.0f, 0.0f, -16.0f)),
-        Chunk(glm::vec3(16.0f, 0.0f, -16.0f)),
-        };
+    // TODO, procedurally generated chunks
+    std::unordered_set<Chunk> chunks;
+    // beginning 9 chunks
+    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, 0.0f)));
+    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)));
+    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, 16.0f)));
+    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, 0.0f)));
+    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, 16.0f)));
+    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, -16.0f)));
+    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, 16.0f)));
+    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, -16.0f)));
+    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, -16.0f)));
 
-    Mesh mesh(chunks, size(chunks));
+    Mesh mesh(chunks);
 
     ourShader.use();
-
-    // TODO, infinite world in main game loop
 
     while (!glfwWindowShouldClose(window))
     {
@@ -242,22 +241,31 @@ int main()
         int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
+
+        // we need a way to check that the chunk already exists or not before spaming the mesh updates
+        checkNewChunks(camera.Position, chunks, mesh);
+
+        cout << "Player: ";
+        cout << camera.Position.x; // this is the match for handling detection within an entire chunk
+        cout << ", "; 
+        cout << camera.Position.z; 
+        cout << "\n";
+
         // render elements
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        for (int i = 0; i < size(mesh.renderCubes); i++)
-        {
-                    glm::mat4 model = glm::mat4(1.0f);
-                    model = glm::translate(model, mesh.renderCubes[i].blockPosition);
-                    ourShader.setMat4("model", model);
+        for (const auto &renderCube : mesh.renderCubes) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, renderCube.blockPosition);
+            ourShader.setMat4("model", model);
 
-                    // draw cube
-                    if (mesh.renderCubes[i].blockType == GRASS) {
-                        drawCube(grass_textures);
-                    } else if (mesh.renderCubes[i].blockType == DIRT) {
-                        drawCube(dirt_textures);
-                    } else {
-                        drawCube(sand_textures);
-                    }
+            // draw cube
+            if (renderCube.blockType == GRASS) {
+                drawCube(grass_textures);
+            } else if (renderCube.blockType == DIRT) {
+                drawCube(dirt_textures);
+            } else {
+                drawCube(sand_textures);
+            }
         }
 
         // check and call events and swap the buffers
@@ -375,3 +383,46 @@ void drawCube(unsigned int textures[])
     glBindTexture(GL_TEXTURE_2D, textures[1]);
     glDrawArrays(GL_TRIANGLES, 30, 6);
 }
+
+void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh){
+    // left and right
+    float x_chunk = (float)floor(playerPos.x / 16);
+    float z_chunk = (float)floor(playerPos.z / 16);
+    cout << "Chunk: ";
+    cout << x_chunk; // this is the match for handling detection within an entire chunk
+    cout << ", "; 
+    cout << z_chunk; 
+    cout << "\n";
+    int chunk_amount = chunks.size();
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, z_chunk * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, z_chunk * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        }
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        }
+        if (chunks.size() > chunk_amount) {
+            mesh.updateMesh(chunks); // we only want to call this once, we need to track size before and after insert
+        }
+}
+
