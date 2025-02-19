@@ -186,19 +186,35 @@ int main()
         generateBindTextures(sand_textures[i], path.c_str());
     }
 
+    unsigned int texture6 = 0;
+    unsigned int tree_textures[1] = {texture6};
+    for (int i = 0; i < size(grass_textures); i++)
+    {
+        string path = "graphics/tree_block/" + to_string(i) + ".png";
+        generateBindTextures(tree_textures[i], path.c_str());
+    }
+
+    unsigned int texture7 = 0;
+    unsigned int leaf_textures[1] = {texture7};
+    for (int i = 0; i < size(grass_textures); i++)
+    {
+        string path = "graphics/leaf_block/" + to_string(i) + ".png";
+        generateBindTextures(leaf_textures[i], path.c_str());
+    }
+
 
     // TODO, procedurally generated chunks
     std::unordered_set<Chunk> chunks;
     // beginning 9 chunks
     chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, 16.0f)));
-    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, 16.0f)));
-    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, -16.0f)));
-    chunks.insert(Chunk(glm::vec3(-16.0f, 0.0f, 16.0f)));
-    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, -16.0f)));
-    chunks.insert(Chunk(glm::vec3(16.0f, 0.0f, -16.0f)));
+    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, 0.0f)));
+    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, Chunk::CHUNK_SIZE)));
+    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, 0.0f)));
+    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, Chunk::CHUNK_SIZE)));
+    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, -Chunk::CHUNK_SIZE)));
+    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, Chunk::CHUNK_SIZE)));
+    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, -Chunk::CHUNK_SIZE)));
+    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, -Chunk::CHUNK_SIZE)));
 
     Mesh mesh(chunks);
 
@@ -245,12 +261,6 @@ int main()
         // we need a way to check that the chunk already exists or not before spaming the mesh updates
         checkNewChunks(camera.Position, chunks, mesh);
 
-        cout << "Player: ";
-        cout << camera.Position.x; // this is the match for handling detection within an entire chunk
-        cout << ", "; 
-        cout << camera.Position.z; 
-        cout << "\n";
-
         // render elements
         glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
         for (const auto &renderCube : mesh.renderCubes) {
@@ -263,6 +273,10 @@ int main()
                 drawCube(grass_textures);
             } else if (renderCube.blockType == DIRT) {
                 drawCube(dirt_textures);
+            }  else if (renderCube.blockType == TREE) {
+                drawCube(tree_textures);
+            }  else if (renderCube.blockType == LEAF) {
+                drawCube(leaf_textures);
             } else {
                 drawCube(sand_textures);
             }
@@ -385,42 +399,40 @@ void drawCube(unsigned int textures[])
 }
 
 void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh){
-    // left and right
+    // current x and y chunk
     float x_chunk = (float)floor(playerPos.x / 16);
     float z_chunk = (float)floor(playerPos.z / 16);
-    cout << "Chunk: ";
-    cout << x_chunk; // this is the match for handling detection within an entire chunk
-    cout << ", "; 
-    cout << z_chunk; 
-    cout << "\n";
+
+    // check if surrounding chunks exist
     int chunk_amount = chunks.size();
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, z_chunk * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, z_chunk * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * 16.0f, 0.0f, (z_chunk - 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * 16.0f, 0.0f, (z_chunk + 1) * 16.0f)));
+        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
+            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
+        // if we added a new chunk, edit the mesh
         if (chunks.size() > chunk_amount) {
             mesh.updateMesh(chunks); // we only want to call this once, we need to track size before and after insert
         }

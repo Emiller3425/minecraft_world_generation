@@ -21,6 +21,8 @@ const int AIR = 0;
 const int GRASS = 1;
 const int DIRT = 2;
 const int SAND = 3;
+const int TREE = 4;
+const int LEAF = 5;
 
 float perlin(float x, float y);
 float dotGridGradient(int ix, int iy, float x, float y);

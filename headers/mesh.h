@@ -64,7 +64,7 @@ public:
 
     void updateMesh(unordered_set<Chunk> chunks) {
         // clear current render cubes
-        renderCubes.clear();
+        //renderCubes.clear();
         // insert blocks into set
         for (const auto &chunk : chunks)
         {
