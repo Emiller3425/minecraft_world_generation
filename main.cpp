@@ -165,14 +165,14 @@ int main()
     // generate and bind texture id
     unsigned int texture1 = 0, texture2 = 0, texture3 = 0;
     unsigned int grass_textures[3] = {texture1, texture2, texture3};
-    for (int i = 0; i < size(grass_textures); i++)
+    for (int i = 0; i < 3; i++)
     {
         string path = "graphics/grass_block/" + to_string(i) + ".png";
         generateBindTextures(grass_textures[i], path.c_str());
     }
     unsigned int texture4 = 0;
     unsigned int dirt_textures[1] = {texture4};
-    for (int i = 0; i < size(grass_textures); i++)
+    for (int i = 0; i < 3; i++)
     {
         string path = "graphics/dirt_block/" + to_string(i) + ".png";
         generateBindTextures(dirt_textures[i], path.c_str());
@@ -180,7 +180,7 @@ int main()
 
     unsigned int texture5 = 0;
     unsigned int sand_textures[1] = {texture5};
-    for (int i = 0; i < size(grass_textures); i++)
+    for (int i = 0; i < 3; i++)
     {
         string path = "graphics/sand_block/" + to_string(i) + ".png";
         generateBindTextures(sand_textures[i], path.c_str());
@@ -188,7 +188,7 @@ int main()
 
     unsigned int texture6 = 0;
     unsigned int tree_textures[1] = {texture6};
-    for (int i = 0; i < size(grass_textures); i++)
+    for (int i = 0; i < 3; i++)
     {
         string path = "graphics/tree_block/" + to_string(i) + ".png";
         generateBindTextures(tree_textures[i], path.c_str());
@@ -196,7 +196,7 @@ int main()
 
     unsigned int texture7 = 0;
     unsigned int leaf_textures[1] = {texture7};
-    for (int i = 0; i < size(grass_textures); i++)
+    for (int i = 0; i < 3; i++)
     {
         string path = "graphics/leaf_block/" + to_string(i) + ".png";
         generateBindTextures(leaf_textures[i], path.c_str());

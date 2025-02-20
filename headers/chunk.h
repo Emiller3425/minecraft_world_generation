@@ -101,6 +101,11 @@ public:
         }
     }
 
+    // TODO tree generation
+    void generateTrees() {
+
+    }
+
     glm::vec2 randomGradient(int ix, int iy)
     {
         const unsigned w = 8 * sizeof(unsigned);
