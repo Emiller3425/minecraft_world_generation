@@ -29,7 +29,15 @@ float dotGridGradient(int ix, int iy, float x, float y);
 float interpolate(float a0, float a1, float w);
 glm::vec2 randomGradient(int ix, int iy);
 
+float temp;
+float min_val;
+float max_val;
+std::random_device rd; 
+std::mt19937 gen(rd());
+
 // TODO seeds and fix perlin noise being outside of [-1, 1]
+
+// TODO use vectors instead of arrays for trees to start, can use the at() function in the mesh header for the index
 
 using namespace std;
 
@@ -41,6 +49,12 @@ public:
     static const unsigned int CHUNK_SIZE = 16;
     // array of blocks in chunk
     Block blocks[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
+
+    // vector for list of tree trunks TODO, do the same for leaves
+    std::vector<Block> trees;
+
+    // array of blocks for leaves in the chunk
+    Block leaves[CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE];
 
     // coordinate origin for this chunk
     glm::vec3 origin;
@@ -74,15 +88,15 @@ public:
                     int index = (x * CHUNK_SIZE * CHUNK_SIZE) + (y + (z * CHUNK_SIZE));
                     // Actual world position of this block
 
-                    blocks[index].blockPosition = glm::vec3(
-                        static_cast<float>(x + origin.x),
-                        static_cast<float>(y + origin.y),
-                        static_cast<float>(z + origin.z));
+                    blocks[index].blockPosition = glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z));
 
                     // set block type
                     if (y == terrainHeight && y > 3)
                     {
                         blocks[index].blockType = GRASS;
+                        // TODO chance to generate tree if grass
+                        // create trunk
+
                     }
                     else if (y < terrainHeight && y > 3)
                     {
@@ -96,14 +110,30 @@ public:
                     {
                         blocks[index].blockType = AIR;
                     }
+
+                    // TODO random trees, random heights, leaves on trees
+
+                    // make a vector of trees instead of an array, this is per chunk, trees can be pushed instead of using an array
+                    if (blocks[index].blockType == GRASS && trees.size() == 0) {
+                        // loop to add tree blocks
+                        for (int i = 0; i < 10; i++)
+                        {
+                            trees.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + (i + 1) + origin.y), static_cast<float>(z + origin.z)), TREE));
+                        }
+                        // loop to add leaf blocks, i feel like it's gotta be a vecot so we can push_back
+                        for (int i = 0; i < 5; i ++) {
+                            leaves[i].blockPosition = glm::vec3(static_cast<float>(x + origin.x + 1), static_cast<float>(y + (i + 1) + origin.y + 5), static_cast<float>(z + origin.z));
+                            leaves[i].blockType = LEAF;
+                        }
+                    }
                 }
             }
         }
     }
 
     // TODO tree generation
-    void generateTrees() {
-
+    void generateTrees()
+    {
     }
 
     glm::vec2 randomGradient(int ix, int iy)
@@ -181,7 +211,8 @@ public:
         return origin;
     }
 
-    bool operator==(const Chunk& other) const {
+    bool operator==(const Chunk &other) const
+    {
         return origin == other.origin;
     }
 
@@ -189,10 +220,13 @@ private:
     // IDK what to put here yet
 };
 
-namespace std {
+namespace std
+{
     template <>
-    struct hash<Chunk> {
-        size_t operator()(const Chunk& chunk) const {
+    struct hash<Chunk>
+    {
+        size_t operator()(const Chunk &chunk) const
+        {
             size_t h1 = hash<float>()(chunk.origin.x);
             size_t h2 = hash<float>()(chunk.origin.y);
             size_t h3 = hash<float>()(chunk.origin.z);

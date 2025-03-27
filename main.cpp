@@ -1,3 +1,12 @@
+/**
+ * PREVIOUS_SESSION_NOTES:
+ * 
+ * Figure out a range for checking chunks to render instead of looping through all chunks, only these should be added to the mesh for rendering
+ * 
+ * Frustrum culling for rendeinrg
+ * 
+ */
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -14,6 +23,25 @@
 
 
 using namespace std;
+
+//structs
+struct Plane {
+    glm::vec3 normal; // plane
+    float distance;  // distance from origin
+};
+
+// might use this might not
+struct Frustrum {
+    Plane topFace;
+    Plane bottomFace;
+
+    Plane rightFace;
+    Plane leftFace;
+
+    Plane frontFace;
+    Plane rearFace;
+};
+
 // buffer call back and input funciton definitions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -29,6 +57,18 @@ const unsigned int SRC_HEIGHT = 600;
 
 // camera shit
 Camera camera(glm::vec3(8.0f, 20.0f, 8.0f));
+
+// planes for frustrum
+Plane topFace;
+Plane bottomFace;
+Plane rightFace;
+Plane leftFace;
+Plane frontFace;
+Plane rearFace;
+
+// frustrum
+Frustrum frustrum;
+
 float lastX = 400, lastY = 300;
 bool firstMouse = true;
 
@@ -87,6 +127,28 @@ int main()
     int fbWidth, fbHeight;
     glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
     glViewport(0, 0, fbWidth, fbHeight);
+
+    topFace.normal = camera.Position + glm::vec3(0.0f, 4.0f, 0.0f);
+    topFace.distance = 4.0f;
+    bottomFace.normal = camera.Position + glm::vec3(0.0f, -4.0f, 0.0f);
+    bottomFace.distance = 4.0f;
+    rightFace.normal = camera.Position + glm::vec3(4.0f, 0.0f, 0.0f);
+    rightFace.distance = 4.0f;
+    leftFace.normal = camera.Position + glm::vec3(-4.0f, 0.0f, 0.0f);
+    leftFace.distance = 4.0f;
+    frontFace.normal = camera.Position + glm::vec3(0.0f, 0.0f, 4.0f);
+    frontFace.distance = 4.0f;
+    rearFace.normal = camera.Position + glm::vec3(0.0f, 0.0f, -4.0f);
+    rearFace.distance = 4.0f;
+
+
+    // define frustrum faces
+    frustrum.topFace = topFace;
+    frustrum.bottomFace = bottomFace;
+    frustrum.rightFace = rightFace;
+    frustrum.leftFace = leftFace;
+    frustrum.frontFace = frontFace;
+    frustrum.rearFace = rearFace;
 
     // vertices
     float vertices[] = {
@@ -202,20 +264,10 @@ int main()
         generateBindTextures(leaf_textures[i], path.c_str());
     }
 
-
-    // TODO, procedurally generated chunks
+    // define list of chunks
     std::unordered_set<Chunk> chunks;
-    // beginning 9 chunks
-    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, Chunk::CHUNK_SIZE)));
-    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, 0.0f)));
-    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, Chunk::CHUNK_SIZE)));
-    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, -Chunk::CHUNK_SIZE)));
-    chunks.insert(Chunk(glm::vec3(-Chunk::CHUNK_SIZE, 0.0f, Chunk::CHUNK_SIZE)));
-    chunks.insert(Chunk(glm::vec3(0.0f, 0.0f, -Chunk::CHUNK_SIZE)));
-    chunks.insert(Chunk(glm::vec3(Chunk::CHUNK_SIZE, 0.0f, -Chunk::CHUNK_SIZE)));
 
+    // define mesh
     Mesh mesh(chunks);
 
     ourShader.use();
@@ -438,3 +490,19 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mes
         }
 }
 
+// Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar) {
+//     Frustrum frustrum;
+//     const float halfVSide = zFar * tanf(fovY * 0.5f);
+//     const float halfHSide = halfVSide * aspect;
+//     const glm::vec3 frontMultFar = zFar * camera.Front;
+
+//     frustrum.frontFace = {camera.Position + zNear * camera.Front, camera.Front};
+//     frustrum.rearFace = {camera.Position + frontMultFar, -camera.Front};
+//     frustrum.rightFace = {camera.Position, glm::cross(frontMultFar - camera.Right * halfHSide, camera.Up)};
+//     frustrum.leftFace = {camera.Position, glm::cross(frontMultFar - camera.Right * halfHSide, camera.Up)};
+//     frustrum.topFace = {camera.Position, glm::cross(camera.Right, frontMultFar - camera.Up * halfVSide)};
+//     frustrum.bottomFace = {camera.Position, glm::cross(frontMultFar + camera.Up * halfVSide, camera.Right)};
+
+//     return frustrum;
+
+// }

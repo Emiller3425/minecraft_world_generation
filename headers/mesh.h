@@ -35,6 +35,18 @@ public:
                     blockPositions.insert(chunk.blocks[i].blockPosition);
                 }
             }
+            for (int i = 0; i < chunk.trees.size(); i++)
+            {
+                if (chunk.trees.at(i).blockType != AIR) {
+                    blockPositions.insert(chunk.trees.at(i).blockPosition);
+                }
+            }
+            for (int i = 0; i < size(chunk.leaves); i++)
+            {
+                if (chunk.leaves[i].blockType != AIR) {
+                    blockPositions.insert(chunk.leaves[i].blockPosition);
+                }
+            }
         }
 
         // Iterate again to determine visible blocks
@@ -59,6 +71,45 @@ public:
                     }
                 }
             }
+            for (int i = 0; i < chunk.trees.size(); i++)
+            {
+                if (chunk.trees.at(i).blockType != AIR)
+                {
+                    const glm::vec3 &pos = chunk.trees.at(i).blockPosition;
+
+                    // Check if block is exposed (i.e., it has at least one open face)
+                    if (
+                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    {
+                        renderCubes.insert(chunk.trees.at(i));
+                    }
+                }
+            }
+            for (int i = 0; i < size(chunk.leaves); i++)
+            {
+                if (chunk.leaves[i].blockType != AIR)
+                {
+                    const glm::vec3 &pos = chunk.leaves[i].blockPosition;
+
+                    // Check if block is exposed (i.e., it has at least one open face)
+                    if (
+                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    {
+                        renderCubes.insert(chunk.leaves[i]);
+                    }
+                }
+            }
+
         }
     }
 
@@ -72,6 +123,18 @@ public:
             {
                 if (chunk.blocks[i].blockType != AIR) {
                     blockPositions.insert(chunk.blocks[i].blockPosition);
+                }
+            }
+            for (int i = 0; i < chunk.trees.size(); i++)
+            {
+                if (chunk.trees.at(i).blockType != AIR) {
+                    blockPositions.insert(chunk.trees.at(i).blockPosition);
+                }
+            }
+            for (int i = 0; i < size(chunk.leaves); i++)
+            {
+                if (chunk.leaves[i].blockType != AIR) {
+                    blockPositions.insert(chunk.leaves[i].blockPosition);
                 }
             }
         }
@@ -95,6 +158,44 @@ public:
                         blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
                     {
                         renderCubes.insert(chunk.blocks[i]);
+                    }
+                }
+            }
+            for (int i = 0; i < chunk.trees.size(); i++)
+            {
+                if (chunk.trees.at(i).blockType != AIR)
+                {
+                    const glm::vec3 &pos = chunk.trees.at(i).blockPosition;
+
+                    // Check if block is exposed (i.e., it has at least one open face)
+                    if (
+                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    {
+                        renderCubes.insert(chunk.trees.at(i));
+                    }
+                }
+            }
+            for (int i = 0; i < size(chunk.leaves); i++)
+            {
+                if (chunk.leaves[i].blockType != AIR)
+                {
+                    const glm::vec3 &pos = chunk.leaves[i].blockPosition;
+
+                    // Check if block is exposed (i.e., it has at least one open face)
+                    if (
+                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
+                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    {
+                        renderCubes.insert(chunk.leaves[i]);
                     }
                 }
             }
