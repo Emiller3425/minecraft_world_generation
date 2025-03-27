@@ -110,14 +110,27 @@ public:
                     // make a vector of trees instead of an array, this is per chunk, trees can be pushed instead of using an array
                     if (blocks.at(index).blockType == GRASS && trees.size() == 0) {
                         // loop to add tree blocks
-                        for (int i = 0; i < 10; i++)
+                        for (int i = 0; i < 6; i++)
                         {
                             trees.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + (i + 1) + origin.y), static_cast<float>(z + origin.z)), TREE));
                         }
                         // loop to add leaf blocks, i feel like it's gotta be a vecot so we can push_back
-                        for (int i = 0; i < 5; i ++) {
-                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 5), static_cast<float>(z + origin.z)), LEAF));
+                        for (int i = 0; i < 4; i ++) {
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 1)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 1)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 1)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 1)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 1)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 1)), LEAF));
+                            
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 2) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 2) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 2)), LEAF));
+                            leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 2)), LEAF));
                         }
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z)), LEAF));
                     }
                 }
             }

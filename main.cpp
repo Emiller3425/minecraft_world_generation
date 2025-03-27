@@ -205,6 +205,10 @@ int main()
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
+    // for transparency
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // VBO
     unsigned int VBO, VAO;
     glGenVertexArrays(1, &VAO);
