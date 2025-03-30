@@ -22,7 +22,8 @@ class Mesh
 {
 public:
     std::unordered_set<Block> renderCubes;
-    std::unordered_set<glm::vec3> blockPositions;
+    std::unordered_map<glm::vec3, int> blockPositions;
+
 
     Mesh(unordered_set<Chunk> chunks)
     {
@@ -32,22 +33,30 @@ public:
             for (int i = 0; i < chunk.blocks.size(); i++)
             {
                 if (chunk.blocks.at(i).blockType != AIR) {
-                    blockPositions.insert(chunk.blocks.at(i).blockPosition);
+                    blockPositions[chunk.blocks.at(i).blockPosition] = chunk.blocks.at(i).blockType;
                 }
             }
             for (int i = 0; i < chunk.trees.size(); i++)
             {
                 if (chunk.trees.at(i).blockType != AIR) {
-                    blockPositions.insert(chunk.trees.at(i).blockPosition);
+                    blockPositions[chunk.trees.at(i).blockPosition] = chunk.trees.at(i).blockType;
                 }
             }
             for (int i = 0; i < chunk.leaves.size(); i++)
             {
                 if (chunk.leaves.at(i).blockType != AIR) {
-                    blockPositions.insert(chunk.leaves.at(i).blockPosition);
+                    blockPositions[chunk.leaves.at(i).blockPosition] = chunk.leaves.at(i).blockType;
                 }
             }
         }
+
+         auto isMissingOrTransparent = [&](const glm::vec3& checkPos) {
+            auto it = blockPositions.find(checkPos);
+            if (it == blockPositions.end()) {
+                return true;
+            }
+            return it->second == 5;
+        };
 
         // Iterate again to determine visible blocks
         for (const auto &chunk : chunks)
@@ -58,14 +67,14 @@ public:
                 {
                     const glm::vec3 &pos = chunk.blocks.at(i).blockPosition;
 
-                    // Check if block is exposed (i.e., it has at least one open face)
                     if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.blocks.at(i));
                     }
@@ -78,13 +87,15 @@ public:
                     const glm::vec3 &pos = chunk.trees.at(i).blockPosition;
 
                     // Check if block is exposed (i.e., it has at least one open face)
-                    if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                    if
+                    (
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.trees.at(i));
                     }
@@ -98,12 +109,13 @@ public:
 
                     // Check if block is exposed (i.e., it has at least one open face)
                     if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.leaves.at(i));
                     }
@@ -122,22 +134,30 @@ public:
             for (int i = 0; i < chunk.blocks.size(); i++)
             {
                 if (chunk.blocks.at(i).blockType != AIR) {
-                    blockPositions.insert(chunk.blocks.at(i).blockPosition);
+                    blockPositions[chunk.blocks.at(i).blockPosition] = chunk.blocks.at(i).blockType;
                 }
             }
             for (int i = 0; i < chunk.trees.size(); i++)
             {
                 if (chunk.trees.at(i).blockType != AIR) {
-                    blockPositions.insert(chunk.trees.at(i).blockPosition);
+                    blockPositions[chunk.trees.at(i).blockPosition] = chunk.trees.at(i).blockType;
                 }
             }
             for (int i = 0; i < chunk.leaves.size(); i++)
             {
                 if (chunk.leaves[i].blockType != AIR) {
-                    blockPositions.insert(chunk.leaves.at(i).blockPosition);
+                    blockPositions[chunk.leaves.at(i).blockPosition] = chunk.leaves.at(i).blockType;
                 }
             }
         }
+
+        auto isMissingOrTransparent = [&](const glm::vec3& checkPos) {
+            auto it = blockPositions.find(checkPos);
+            if (it == blockPositions.end()) {
+                return true;
+            }
+            return it->second == 5;
+        };
 
         // Iterate again to determine visible blocks
         for (const auto &chunk : chunks)
@@ -150,12 +170,13 @@ public:
 
                     // Check if block is exposed (i.e., it has at least one open face)
                     if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.blocks.at(i));
                     }
@@ -169,12 +190,13 @@ public:
 
                     // Check if block is exposed (i.e., it has at least one open face)
                     if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.trees.at(i));
                     }
@@ -188,12 +210,13 @@ public:
 
                     // Check if block is exposed (i.e., it has at least one open face)
                     if (
-                        blockPositions.find(glm::vec3(pos.x + 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x - 1, pos.y, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y + 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y - 1, pos.z)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z + 1)) == blockPositions.end() ||
-                        blockPositions.find(glm::vec3(pos.x, pos.y, pos.z - 1)) == blockPositions.end())
+                        isMissingOrTransparent(glm::vec3(pos.x + 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x - 1, pos.y, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y + 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y - 1, pos.z)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z + 1)) ||
+                        isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
+                    ) 
                     {
                         renderCubes.insert(chunk.leaves.at(i));
                     }

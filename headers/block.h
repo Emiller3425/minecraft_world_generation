@@ -29,7 +29,8 @@ public:
 
     // Overload equality operator for unordered_set
     bool operator==(const Block& other) const {
-        return blockPosition == other.blockPosition;
+        return blockPosition == other.blockPosition &&
+        blockType == other.blockType;
     }
     private:
     // private method

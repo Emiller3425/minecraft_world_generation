@@ -124,7 +124,7 @@ public:
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 1)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 1)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 1)), LEAF));
-                            
+                            // side leaves
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 2) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 2) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 2)), LEAF));
