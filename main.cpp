@@ -318,8 +318,10 @@ int main()
         checkNewChunks(camera.Position, chunks, mesh);
 
         // render elements
-        glBindVertexArray(VAO); // seeing as we only have a single VAO there's no need to bind it every time, but we'll do so to keep things a bit more organized
-        for (const auto &renderCube : mesh.renderCubes) {
+        glBindVertexArray(VAO);
+
+        // render opaque textures first
+        for (const auto &renderCube : mesh.renderOpaqueCubes) {
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
             ourShader.setMat4("model", model);
@@ -336,6 +338,17 @@ int main()
             } else {
                 drawCube(sand_textures);
             }
+        }
+        // render transparent cubes afterwards
+        for (const auto &renderCube : mesh.renderTransparentCubes) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, renderCube.blockPosition);
+            ourShader.setMat4("model", model);
+
+            // draw cube
+            if (renderCube.blockType == LEAF) {
+                drawCube(leaf_textures);
+            } 
         }
 
         // check and call events and swap the buffers

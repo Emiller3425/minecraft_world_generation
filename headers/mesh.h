@@ -21,7 +21,8 @@ using namespace std;
 class Mesh
 {
 public:
-    std::unordered_set<Block> renderCubes;
+    std::unordered_set<Block> renderOpaqueCubes;
+    std::unordered_set<Block> renderTransparentCubes;
     std::unordered_map<glm::vec3, int> blockPositions;
 
 
@@ -76,7 +77,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.blocks.at(i));
+                        renderOpaqueCubes.insert(chunk.blocks.at(i));
                     }
                 }
             }
@@ -97,7 +98,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.trees.at(i));
+                        renderOpaqueCubes.insert(chunk.trees.at(i));
                     }
                 }
             }
@@ -117,7 +118,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.leaves.at(i));
+                        renderTransparentCubes.insert(chunk.leaves.at(i));
                     }
                 }
             }
@@ -178,7 +179,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.blocks.at(i));
+                        renderOpaqueCubes.insert(chunk.blocks.at(i));
                     }
                 }
             }
@@ -198,7 +199,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.trees.at(i));
+                        renderOpaqueCubes.insert(chunk.trees.at(i));
                     }
                 }
             }
@@ -218,7 +219,7 @@ public:
                         isMissingOrTransparent(glm::vec3(pos.x, pos.y, pos.z - 1))
                     ) 
                     {
-                        renderCubes.insert(chunk.leaves.at(i));
+                        renderTransparentCubes.insert(chunk.leaves.at(i));
                     }
                 }
             }
