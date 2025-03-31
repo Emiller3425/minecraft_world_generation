@@ -48,7 +48,7 @@ public:
     // array of blocks in chunk
     std::vector<Block> blocks;
 
-    // vector for list of tree trunks TODO, do the same for leaves
+    // vector for list of tree trunks
     std::vector<Block> trees;
 
     // vector for list of leaves
@@ -89,8 +89,6 @@ public:
                     if (y == terrainHeight && y > 3)
                     {
                     blocks.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z)), GRASS));
-                        // TODO chance to generate tree if grass
-                        // create trunk
                     }
                     else if (y < terrainHeight && y > 3)
                     {
@@ -114,7 +112,7 @@ public:
                         {
                             trees.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + (i + 1) + origin.y), static_cast<float>(z + origin.z)), TREE));
                         }
-                        // loop to add leaf blocks, i feel like it's gotta be a vecot so we can push_back
+                        // loop to add leaf blocks, i feel like it's gotta be a vecor so we can push_back
                         for (int i = 0; i < 4; i ++) {
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
@@ -137,7 +135,6 @@ public:
         }
     }
 
-    // TODO tree generation
     void generateTrees()
     {
     }
