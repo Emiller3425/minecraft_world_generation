@@ -12,8 +12,10 @@
 #include <math.h>
 #include <random>
 #include <functional> // For std::hash
+#include <unordered_set>
 
 #include "block.h"
+#include "chunk.h"
 
 using namespace std;
 
@@ -42,17 +44,25 @@ using namespace std;
 class Chunk
 {
 
+// TODO instead of a vector of blocks, do a vector of positions, create one block type of each, and draw at all locations
+
 public:
     // chunk size
     static const unsigned int CHUNK_SIZE = 16;
     // array of blocks in chunk
     std::vector<Block> blocks;
+    
+    std::unordered_map<glm::vec3, int> blocks_;
 
     // vector for list of tree trunks
     std::vector<Block> trees;
 
+    std::unordered_map<glm::vec3, int> trees_;
+
     // vector for list of leaves
     std::vector<Block> leaves;
+
+    std::unordered_map<glm::vec3, int> leavs_;
 
     // coordinate origin for this chunk
     glm::vec3 origin;
@@ -89,18 +99,22 @@ public:
                     if (y == terrainHeight && y > 3)
                     {
                     blocks.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z)), GRASS));
+                    blocks_[glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z))] = GRASS;
                     }
                     else if (y < terrainHeight && y > 3)
                     {
                     blocks.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z)), DIRT));
+                    blocks_[glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z))] = DIRT;
                     }
                     else if (y <= 3)
                     {
                     blocks.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z)), SAND));
+                    blocks_[glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z))] = SAND;
                     }
                     else
                     {
                     blocks.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z)), AIR));
+                    blocks_[glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + origin.y), static_cast<float>(z + origin.z))] = AIR;
                     }
 
                     // TODO random trees, random heights, leaves on trees
@@ -111,8 +125,9 @@ public:
                         for (int i = 0; i < 6; i++)
                         {
                             trees.push_back(Block(glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + (i + 1) + origin.y), static_cast<float>(z + origin.z)), TREE));
+                            trees_[glm::vec3(static_cast<float>(x + origin.x), static_cast<float>(y + (i + 1) + origin.y), static_cast<float>(z + origin.z))] = TREE;
                         }
-                        // loop to add leaf blocks, i feel like it's gotta be a vecor so we can push_back
+                        // loop to add leaf blocks, i feel like it's gotta be a vector so we can push_back
                         for (int i = 0; i < 4; i ++) {
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z)), LEAF));
@@ -128,7 +143,16 @@ public:
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z + 2)), LEAF));
                             leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + (i + 1) + origin.y + 2), static_cast<float>(z + origin.z - 2)), LEAF));
                         }
+                        // loop to add leaf blocks, i feel like it's gotta be a vector so we can push_back
                         leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z + 1)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z - 1)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z + 1)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z - 1)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x + 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z - 1)), LEAF));
+                        leaves.push_back(Block(glm::vec3(static_cast<float>(x + origin.x - 1) , static_cast<float>(y + origin.y + 7), static_cast<float>(z + origin.z + 1)), LEAF));
                     }
                 }
             }

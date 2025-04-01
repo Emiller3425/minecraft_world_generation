@@ -1,3 +1,4 @@
-main.dSYM/
-app.dYSM/
+main.dSYM/Contents/Resources/DWARF/main
+main.dSYM/Contents/Resources/Relocations/x86_64/main.yml
+app.dYSM/Contents
 main
