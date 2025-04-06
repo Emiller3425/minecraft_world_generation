@@ -14,12 +14,16 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <mutex>
+#include <thread>
+#include <atomic>
 #include "headers/shader.h"
 #include "headers/stb_image.h"
 #include "headers/camera.h"
 #include "headers/chunk.h"
 #include "headers/mesh.h"
 #include "headers/block.h"
+
 
 using namespace std;
 
@@ -271,6 +275,14 @@ int main()
         generateBindTextures(leaf_textures[i], path.c_str());
     }
 
+    unsigned int texture8 = 0;
+    unsigned int water_textures[1] = {texture8};
+    for (int i = 0; i < 3; i++)
+    {
+        string path = "graphics/water_block/" + to_string(i) + ".png";
+        generateBindTextures(water_textures[i], path.c_str());
+    }
+
     // define list of chunks
     std::unordered_set<Chunk> chunks;
 
@@ -329,7 +341,7 @@ int main()
 
         // render opaque textures first
         for (const auto &renderCube : mesh.renderOpaqueCubes) {
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 30.0f)) continue;
+            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
@@ -344,13 +356,15 @@ int main()
                 drawCube(tree_textures);
             }  else if (renderCube.blockType == LEAF) {
                 drawCube(leaf_textures);
-            } else {
+            } else if (renderCube.blockType == SAND){
                 drawCube(sand_textures);
+            } else {
+                drawCube(water_textures);
             }
         }
         // render transparent cubes afterwards
         for (const auto &renderCube : mesh.renderTransparentCubes) {
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 30.0f)) continue;
+            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
             ourShader.setMat4("model", model);
