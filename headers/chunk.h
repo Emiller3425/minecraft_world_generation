@@ -197,12 +197,12 @@ public:
                             }
                             
                             // Define the center of the crown as the top of the trunk.
-                            glm::vec3 crownCenter(x + origin.x, y + 1 + trunkHeight + origin.y, z + origin.z);
+                            glm::vec3 crownCenter(x + origin.x, y + trunkHeight + origin.y, z + origin.z);
 
                             // Generate a spherical crown of leaves in a symmetrical pattern.
                             for (int dx = -crownRadius; dx <= crownRadius; dx++)
                             {
-                                for (int dy = -crownRadius; dy <= crownRadius; dy++)
+                                for (int dy = -crownRadius + 1; dy <= crownRadius; dy++)
                                 {
                                     for (int dz = -crownRadius; dz <= crownRadius; dz++)
                                     {
