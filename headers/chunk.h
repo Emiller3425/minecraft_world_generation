@@ -182,30 +182,38 @@ public:
                     // Tree and water logic for where there is gradd
                     if (blocks.at(index).blockType == GRASS)
                     {
-                        float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-                        if (r < 0.02f && r > 0.01f) {
-                            // Create a simple tree trunk (6 blocks high)
-                            for (int i = 0; i < 6; i++)
+                         float r = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+                        // Adjust the probability as desired
+                        if (r < 0.02f && r > 0.01f) 
+                        {
+                            // Define tree parameters.
+                            const int trunkHeight = 4;   
+                            const int crownRadius = 2;  
+
+                            // Build the trunk.
+                            for (int i = 0; i < trunkHeight; i++)
                             {
-                                trees.push_back(Block(glm::vec3(x + origin.x, y + (i + 1) + origin.y, z + origin.z), TREE));
+                                trees.push_back(Block(glm::vec3(x + origin.x, y + 1 + i + origin.y, z + origin.z), TREE));
                             }
-                            // Add leaves around the top of the tree.
-                            for (int i = 0; i < 4; i++)
+                            
+                            // Define the center of the crown as the top of the trunk.
+                            glm::vec3 crownCenter(x + origin.x, y + 1 + trunkHeight + origin.y, z + origin.z);
+
+                            // Generate a spherical crown of leaves in a symmetrical pattern.
+                            for (int dx = -crownRadius; dx <= crownRadius; dx++)
                             {
-                                leaves.push_back(Block(glm::vec3(x + origin.x + 1, y + (i + 1) + origin.y + 2, z + origin.z), LEAF));
-                                leaves.push_back(Block(glm::vec3(x + origin.x - 1, y + (i + 1) + origin.y + 2, z + origin.z), LEAF));
-                                leaves.push_back(Block(glm::vec3(x + origin.x, y + (i + 1) + origin.y + 2, z + origin.z + 1), LEAF));
-                                leaves.push_back(Block(glm::vec3(x + origin.x, y + (i + 1) + origin.y + 2, z + origin.z - 1), LEAF));
+                                for (int dy = -crownRadius; dy <= crownRadius; dy++)
+                                {
+                                    for (int dz = -crownRadius; dz <= crownRadius; dz++)
+                                    {
+                                        // Adjust the threshold (radius + 0.5f) for rounding if desired.
+                                        if (glm::length(glm::vec3(dx, dy, dz)) <= crownRadius + 0.5f)
+                                        {
+                                            leaves.push_back(Block(crownCenter + glm::vec3(dx, dy, dz), LEAF));
+                                        }
+                                    }
+                                }
                             }
-                            leaves.push_back(Block(glm::vec3(x + origin.x, y + origin.y + 7, z + origin.z), LEAF));
-                            leaves.push_back(Block(glm::vec3(x + origin.x + 1, y + origin.y + 7, z + origin.z), LEAF));
-                            leaves.push_back(Block(glm::vec3(x + origin.x, y + origin.y + 7, z + origin.z + 1), LEAF));
-                            leaves.push_back(Block(glm::vec3(x + origin.x - 1, y + origin.y + 7, z + origin.z), LEAF));
-                            leaves.push_back(Block(glm::vec3(x + origin.x, y + origin.y + 7, z + origin.z - 1), LEAF));
-                        }
-                        // Water handling
-                        if (r < 0.0005f) {
-                            blocks.at(index).blockType = WATER;
                         }
                     }
                 }
