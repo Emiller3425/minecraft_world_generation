@@ -24,7 +24,6 @@
 #include "headers/mesh.h"
 #include "headers/block.h"
 
-
 using namespace std;
 
 //structs

@@ -124,7 +124,7 @@ public:
     {
         origin = originVector;
         // Adjust noiseScaler to control horizontal feature size.
-        float noiseScaler = 0.01f;
+        float noiseScaler = 0.03f;
         // Set maximum terrain height within the bounds 0 to CHUNK_SIZE - 1.
         float maxTerrainHeight = (float)CHUNK_SIZE - 1;
 
@@ -134,11 +134,11 @@ public:
         {
             for (int z = 0; z < CHUNK_SIZE; z++)
             {
-                float rawNoise = fbm((x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler, 4, 0.5f, 2.0f);
+                float rawNoise = fbm((x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler, 8, 0.7f, 1.7f);
                 // Normalize the raw noise from [-1,1] to [0,1]
                 float normalizedNoise = (rawNoise + 1.0f) / 2.0f;
                 // Apply contrast to accentuate differences while still clamping between 0 and 1.
-                float contrast = 1.5f;  // Increase this value for greater variation
+                float contrast = 1.2f;  // Increase this value for greater variation
                 normalizedNoise = glm::clamp((normalizedNoise - 0.5f) * contrast + 0.5f, 0.0f, 1.0f);
                 noiseValues[x][z] = normalizedNoise;
             }
@@ -166,11 +166,11 @@ public:
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), DIRT));
                     }
-                    else if (y == 3)
+                    else if (y < terrainHeight && y == 3)
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), SAND));
                     }
-                    else if (y < 3)
+                    else if ((y < terrainHeight && y < 3) || (y <= 1 && terrainHeight <= 1))
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), WATER));
                     }
@@ -179,11 +179,11 @@ public:
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), AIR));
                     }
 
-                    // Place a tree on the first GRASS block encountered in this (x,z) column.
+                    // Tree and water logic for where there is gradd
                     if (blocks.at(index).blockType == GRASS)
                     {
                         float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-                        if (r < 0.02) {
+                        if (r < 0.02f && r > 0.01f) {
                             // Create a simple tree trunk (6 blocks high)
                             for (int i = 0; i < 6; i++)
                             {
@@ -202,6 +202,10 @@ public:
                             leaves.push_back(Block(glm::vec3(x + origin.x, y + origin.y + 7, z + origin.z + 1), LEAF));
                             leaves.push_back(Block(glm::vec3(x + origin.x - 1, y + origin.y + 7, z + origin.z), LEAF));
                             leaves.push_back(Block(glm::vec3(x + origin.x, y + origin.y + 7, z + origin.z - 1), LEAF));
+                        }
+                        // Water handling
+                        if (r < 0.0005f) {
+                            blocks.at(index).blockType = WATER;
                         }
                     }
                 }
