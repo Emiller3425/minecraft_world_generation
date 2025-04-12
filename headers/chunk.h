@@ -166,11 +166,11 @@ public:
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), DIRT));
                     }
-                    else if (y < terrainHeight && y == 3)
+                    else if (y <= terrainHeight && y == 3)
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), SAND));
                     }
-                    else if ((y < terrainHeight && y < 3) || (y <= 1 && terrainHeight <= 1))
+                    else if ((y < terrainHeight && y < 3) || (y <= 1 && terrainHeight <= 1) || y < 3)
                     {
                         blocks.push_back(Block(glm::vec3(x + origin.x, y + origin.y, z + origin.z), WATER));
                     }

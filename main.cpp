@@ -49,7 +49,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
-void generateBindTextures(unsigned int &texture, const char *path);
+void generateBindTextures(unsigned int &texture, const char *path, bool isSkybox);
 void drawCube(unsigned int textures[]);
 void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh);
 Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar);
@@ -128,6 +128,8 @@ int main()
     }
     // define shaders
     Shader ourShader("shaders/shader.vs", "shaders/shader.fs");
+
+    Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
 
     // tell openGL the size of the window
     int fbWidth, fbHeight;
@@ -240,14 +242,14 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/grass_block/" + to_string(i) + ".png";
-        generateBindTextures(grass_textures[i], path.c_str());
+        generateBindTextures(grass_textures[i], path.c_str(), false);
     }
     unsigned int texture4 = 0;
     unsigned int dirt_textures[1] = {texture4};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/dirt_block/" + to_string(i) + ".png";
-        generateBindTextures(dirt_textures[i], path.c_str());
+        generateBindTextures(dirt_textures[i], path.c_str(), false);
     }
 
     unsigned int texture5 = 0;
@@ -255,7 +257,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/sand_block/" + to_string(i) + ".png";
-        generateBindTextures(sand_textures[i], path.c_str());
+        generateBindTextures(sand_textures[i], path.c_str(), false);
     }
 
     unsigned int texture6 = 0;
@@ -263,7 +265,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/tree_block/" + to_string(i) + ".png";
-        generateBindTextures(tree_textures[i], path.c_str());
+        generateBindTextures(tree_textures[i], path.c_str(), false);
     }
 
     unsigned int texture7 = 0;
@@ -271,7 +273,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/leaf_block/" + to_string(i) + ".png";
-        generateBindTextures(leaf_textures[i], path.c_str());
+        generateBindTextures(leaf_textures[i], path.c_str(), false);
     }
 
     unsigned int texture8 = 0;
@@ -279,7 +281,14 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/water_block/" + to_string(i) + ".png";
-        generateBindTextures(water_textures[i], path.c_str());
+        generateBindTextures(water_textures[i], path.c_str(), false);
+    }
+
+    unsigned int texture9 = 0;
+    unsigned int skybox_textures[1] = {texture9};
+    for (int i = 0; i < 6; i++) {
+        string path = "graphics/skybox/" + to_string(i) + ".png";
+        generateBindTextures(skybox_textures[i], path.c_str(), true);
     }
 
     // define list of chunks
@@ -298,10 +307,18 @@ int main()
         lastFrame = currentFrame;
         // process input
         processInput(window);
-
         glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
         glEnable(GL_DEPTH_TEST);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // we need a way to check that the chunk already exists or not before spaming the mesh updates
+        checkNewChunks(camera.Position, chunks, mesh);
+
+        // render elements
+        glBindVertexArray(VAO);
+
+        // frustrum culling
+        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 100.0f);
 
         // render container
         ourShader.use();
@@ -317,7 +334,7 @@ int main()
         // View Matrix
         glm::mat4 view = camera.GetViewMatrix();
 
-        // Unifp=orm Matrices
+        // Uniform Matrices
         int modelLoc = glGetUniformLocation(ourShader.ID, "model");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
@@ -326,18 +343,6 @@ int main()
 
         int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-
-        // we need a way to check that the chunk already exists or not before spaming the mesh updates
-        checkNewChunks(camera.Position, chunks, mesh);
-
-        // render elements
-        glBindVertexArray(VAO);
-
-        // frustrum culling
-        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 100.0f);
-
-
         // render opaque textures first
         for (const auto &renderCube : mesh.renderOpaqueCubes) {
             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
@@ -442,21 +447,31 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-void generateBindTextures(unsigned int &texture, const char *path)
+void generateBindTextures(unsigned int &texture, const char *path, bool isSkybox)
 {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    // set the texture wrapping parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    // set texture filtering parameters
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    if (isSkybox) {
+        // specify skybox filtering parameters
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // specify skybax wrapping parameters
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);  
+    } else {
+        // set the texture wrapping parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        // set texture filtering parameters
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    }
     // load and generate textures
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(1);
     unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data)
+    if (data && !isSkybox)
     { // handle color GL color format
         GLenum format = 0;
         if (nrChannels == 1)
@@ -468,8 +483,11 @@ void generateBindTextures(unsigned int &texture, const char *path)
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
-    else
-    {
+    else if (data && isSkybox)
+    { // handle skybox color GL color format
+        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    } 
+    else {
         cout << "Failed to load texture\n";
     }
     stbi_image_free(data);
