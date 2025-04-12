@@ -49,8 +49,10 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
-void generateBindTextures(unsigned int &texture, const char *path, bool isSkybox);
+void generateBindTextures(unsigned int &texture, const char *path);
+unsigned int loadCubemap(vector<std::string> faces);
 void drawCube(unsigned int textures[]);
+void drawSkybox(unsigned int cubemapTextureID);
 void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh);
 Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar);
 bool isCubeInFrustrum(const Frustrum& frustum, const glm::vec3& cubeCenter, float radius);
@@ -208,6 +210,51 @@ int main()
         0.5f, 0.5f, -0.5f, 1.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 0.0f};
 
+    float skyboxVertices[] = {
+        // positions          
+        -1.0f,  1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f, -1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f,  1.0f,
+
+        -1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f, -1.0f,
+        1.0f,  1.0f,  1.0f,
+        1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f,  1.0f,
+        -1.0f,  1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f,  1.0f,
+        1.0f, -1.0f,  1.0f
+    };
+
     // only render outside of vertices
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -233,6 +280,19 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
+
+    // skybox VBO
+    unsigned int skyboxVBO, skyboxVAO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    // bind vertex array object first
+    glBindVertexArray(skyboxVAO);
+    // bind buffer to target
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+
     // WIREFRAME DRAWING
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -242,14 +302,14 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/grass_block/" + to_string(i) + ".png";
-        generateBindTextures(grass_textures[i], path.c_str(), false);
+        generateBindTextures(grass_textures[i], path.c_str());
     }
     unsigned int texture4 = 0;
     unsigned int dirt_textures[1] = {texture4};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/dirt_block/" + to_string(i) + ".png";
-        generateBindTextures(dirt_textures[i], path.c_str(), false);
+        generateBindTextures(dirt_textures[i], path.c_str());
     }
 
     unsigned int texture5 = 0;
@@ -257,7 +317,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/sand_block/" + to_string(i) + ".png";
-        generateBindTextures(sand_textures[i], path.c_str(), false);
+        generateBindTextures(sand_textures[i], path.c_str());
     }
 
     unsigned int texture6 = 0;
@@ -265,7 +325,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/tree_block/" + to_string(i) + ".png";
-        generateBindTextures(tree_textures[i], path.c_str(), false);
+        generateBindTextures(tree_textures[i], path.c_str());
     }
 
     unsigned int texture7 = 0;
@@ -273,7 +333,7 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/leaf_block/" + to_string(i) + ".png";
-        generateBindTextures(leaf_textures[i], path.c_str(), false);
+        generateBindTextures(leaf_textures[i], path.c_str());
     }
 
     unsigned int texture8 = 0;
@@ -281,14 +341,25 @@ int main()
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/water_block/" + to_string(i) + ".png";
-        generateBindTextures(water_textures[i], path.c_str(), false);
+        generateBindTextures(water_textures[i], path.c_str());
     }
 
-    unsigned int texture9 = 0;
-    unsigned int skybox_textures[1] = {texture9};
-    for (int i = 0; i < 6; i++) {
-        string path = "graphics/skybox/" + to_string(i) + ".png";
-        generateBindTextures(skybox_textures[i], path.c_str(), true);
+    vector<std::string> skyboxFaces {
+        "graphics/skybox/0.png",
+        "graphics/skybox/1.png",
+        "graphics/skybox/2.png",
+        "graphics/skybox/3.png",
+        "graphics/skybox/4.png",
+        "graphics/skybox/5.png",
+    };
+
+    unsigned int cubemapTexture = loadCubemap(skyboxFaces);
+
+    // check that we were able to create cubemap texture
+    if (cubemapTexture == 0) {
+        cerr << "Failed to load cubemap texture. Exiting." << endl;
+        glfwTerminate();
+        return -1;
     }
 
     // define list of chunks
@@ -297,9 +368,7 @@ int main()
     // define mesh
     Mesh mesh(chunks);
 
-    ourShader.use();
-
-    while (!glfwWindowShouldClose(window))
+       while (!glfwWindowShouldClose(window))
     {
         // calculate deltaTime
         float currentFrame = glfwGetTime();
@@ -308,76 +377,94 @@ int main()
         // process input
         processInput(window);
         glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
-        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_DEPTH_TEST); // Ensure depth testing is enabled before clearing
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // we need a way to check that the chunk already exists or not before spaming the mesh updates
+        // Check for new chunks to load/mesh
         checkNewChunks(camera.Position, chunks, mesh);
 
-        // render elements
-        glBindVertexArray(VAO);
-
-        // frustrum culling
+        // Update frustum
         frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 100.0f);
 
-        // render container
-        ourShader.use();
-
-        // model matrix
-        glm::mat4 model = glm::mat4(1.0f);
-        model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-
-        // define projection matrix
-        glm::mat4 projection;
-        projection = glm::perspective(glm::radians(camera.Zoom), 800.0f / 600.0f, 0.1f, 100.0f);
-
-        // View Matrix
+        // Common matrices
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
-        // Uniform Matrices
-        int modelLoc = glGetUniformLocation(ourShader.ID, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-        int viewLoc = glGetUniformLocation(ourShader.ID, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        // --- Render Skybox ---
+        glDepthFunc(GL_LEQUAL);      // Change depth function so fragments equal to depth buffer value pass (skybox sits at far plane)
+        glDepthMask(GL_FALSE);     // Disable writing to the depth buffer for the skybox
 
-        int projectionLoc = glGetUniformLocation(ourShader.ID, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        skyboxShader.use();
+        glm::mat4 skyboxView = glm::mat4(glm::mat3(view)); // Remove translation from the view matrix
+        skyboxShader.setMat4("view", skyboxView);
+        skyboxShader.setMat4("projection", projection);
+        skyboxShader.setInt("skybox", 0); // Use texture unit 0
+
+        glBindVertexArray(skyboxVAO);
+        glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture); // Bind the cubemap texture
+        glDrawArrays(GL_TRIANGLES, 0, 36); // Draw the skybox
+        glBindVertexArray(0); // Unbind skybox VAO
+
+
+        // --- Restore default state for world rendering ---
+        glDepthMask(GL_TRUE);      // Re-enable depth writing **
+        glDepthFunc(GL_LESS);      // Restore default depth function
+        glEnable(GL_CULL_FACE);    // Ensure face culling is enabled ** (If you disabled it for skybox)
+        glCullFace(GL_BACK);       // Restore back-face culling **
+
+
+        // --- Render World Geometry ---
+        ourShader.use();
+        ourShader.setMat4("view", view); // Use the normal view matrix
+        ourShader.setMat4("projection", projection);
+        ourShader.setInt("texture1", 0); // Tell world shader sampler "texture1" to use texture unit 0
+
+        glBindVertexArray(VAO); // Bind world geometry VAO
+
         // render opaque textures first
         for (const auto &renderCube : mesh.renderOpaqueCubes) {
+            // Frustum check (using the provided radius)
             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
             ourShader.setMat4("model", model);
 
-            // draw cube
+            // Select and bind appropriate 2D texture based on block type
+            glActiveTexture(GL_TEXTURE0); // Ensure texture unit 0 is active for 2D textures now
             if (renderCube.blockType == GRASS) {
                 drawCube(grass_textures);
             } else if (renderCube.blockType == DIRT) {
                 drawCube(dirt_textures);
             }  else if (renderCube.blockType == TREE) {
                 drawCube(tree_textures);
-            }  else if (renderCube.blockType == LEAF) {
-                drawCube(leaf_textures);
-            } else if (renderCube.blockType == SAND){
+            } else if (renderCube.blockType == WATER) {
+                 drawCube(water_textures);
+            }else if (renderCube.blockType == SAND){
                 drawCube(sand_textures);
-            } else {
-                drawCube(water_textures);
             }
         }
-        // render transparent cubes afterwards
+
+        // Render transparent cubes afterwards
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         for (const auto &renderCube : mesh.renderTransparentCubes) {
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
+             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
+
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
             ourShader.setMat4("model", model);
 
-            // draw cube
-            if (renderCube.blockType == LEAF) {
+            glActiveTexture(GL_TEXTURE0); 
+
+            if (renderCube.blockType == LEAF) { // Transparent leaves
                 drawCube(leaf_textures);
-            } 
+            }
         }
+        glBindVertexArray(0); // Unbind world VAO
 
         // check and call events and swap the buffers
         glfwSwapBuffers(window);
@@ -447,31 +534,21 @@ void scroll_callback(GLFWwindow *window, double xoffset, double yoffset)
     camera.ProcessMouseScroll(static_cast<float>(yoffset));
 }
 
-void generateBindTextures(unsigned int &texture, const char *path, bool isSkybox)
+void generateBindTextures(unsigned int &texture, const char *path)
 {
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
-    if (isSkybox) {
-        // specify skybox filtering parameters
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        // specify skybax wrapping parameters
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);  
-    } else {
-        // set the texture wrapping parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        // set texture filtering parameters
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    }
+    // set the texture wrapping parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // set texture wrapping to GL_REPEAT (default wrapping method)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    // set texture filtering parameters
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     // load and generate textures
     int width, height, nrChannels;
     stbi_set_flip_vertically_on_load(1);
     unsigned char *data = stbi_load(path, &width, &height, &nrChannels, 0);
-    if (data && !isSkybox)
+    if (data)
     { // handle color GL color format
         GLenum format = 0;
         if (nrChannels == 1)
@@ -483,14 +560,57 @@ void generateBindTextures(unsigned int &texture, const char *path, bool isSkybox
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
-    else if (data && isSkybox)
-    { // handle skybox color GL color format
-        glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-    } 
     else {
         cout << "Failed to load texture\n";
     }
     stbi_image_free(data);
+}
+
+unsigned int loadCubemap(vector<std::string> faces)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    stbi_set_flip_vertically_on_load(false); // Cubemaps often don't need flipping
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            GLenum format = GL_RGB; // Assuming RGB, adjust if your images have alpha
+             if (nrChannels == 1)
+                 format = GL_RED;
+             else if (nrChannels == 3)
+                 format = GL_RGB;
+             else if (nrChannels == 4)
+                 format = GL_RGBA;
+
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // Target face (+X, -X, +Y, ...)
+                         0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cerr << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data); // Even if data is null, free attempts are safe
+             glDeleteTextures(1, &textureID); // Clean up texture ID if loading fails
+             return 0; // Return 0 to indicate failure
+        }
+    }
+    stbi_set_flip_vertically_on_load(true); // Set back to true for other textures if needed
+
+    // Set cubemap texture parameters
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0); // Unbind
+
+    return textureID;
 }
 
 void drawCube(unsigned int textures[])
@@ -506,6 +626,14 @@ void drawCube(unsigned int textures[])
     // 4) Draw the top face (indices 30..35) with 1.png
     glBindTexture(GL_TEXTURE_2D, textures[1]);
     glDrawArrays(GL_TRIANGLES, 30, 6);
+}
+
+void drawSkybox(unsigned int cubemapTextureID) {
+    // Bind the single cubemap texture ID
+    glActiveTexture(GL_TEXTURE0); // Ensure texture unit 0 is active (usually default)
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTextureID);
+    // The VAO should be bound before calling this function
+    glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
 void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh){
