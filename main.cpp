@@ -1,9 +1,7 @@
 /**
- * PREVIOUS_SESSION_NOTES:
+ * TODO:
  * 
- * Figure out a range for checking chunks to render instead of looping through all chunks, only these should be added to the mesh for rendering
- * 
- * Frustrum culling for rendeinrg
+ * Multi-threading for the mesh creation and lighting
  * 
  */
 
@@ -23,6 +21,7 @@
 #include "headers/chunk.h"
 #include "headers/mesh.h"
 #include "headers/block.h"
+
 
 using namespace std;
 
@@ -129,8 +128,8 @@ int main()
         return -1;
     }
     // define shaders
-    Shader ourShader("shaders/shader.vs", "shaders/shader.fs");
-
+    Shader textureShader("shaders/texture.vs", "shaders/texture.fs");
+        
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
 
     // tell openGL the size of the window
@@ -160,56 +159,58 @@ int main()
     frustrum.frontFace = frontFace;
     frustrum.rearFace = rearFace;
 
-    // vertices
+    // the vetices are laid out by the x,y,z components, then the next 2 lay out how the texture is mapped to the vertices. the last 3 then represent the normal vector perpendicular to each plane the groups of vertices represent.
     float vertices[] = {
         // Face -Z (front)
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 0.0f, 0.0f, -1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 1.0f, 0.0f, 0.0f, -1.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 0.0f, -1.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
 
         // Face +Z (back)
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f,
 
         // Face -X (left)
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        -0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f, 1.0f, 0.0f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, 1.0f, 1.0f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 1.0f, -1.0f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f,
 
         // Face +X (right)
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, 0.5f, -0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
 
         // Face -Y (bottom)
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
-        0.5f, -0.5f, -0.5f, 1.0f, 0.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, -0.5f, 0.5f, 1.0f, 1.0f,
-        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, -0.5f, 1.0f, 0.0f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,
+        0.5f, -0.5f, 0.5f, 1.0f, 1.0f, 0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, -1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f,
 
         // Face +Y (top)
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f,
-        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, 0.5f, 1.0f, 1.0f,
-        0.5f, 0.5f, -0.5f, 1.0f, 0.0f,
-        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f};
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        -0.5f, 0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, 0.5f, 1.0f, 1.0f, 0.0f, 1.0f, 0.0f,
+        0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
+        -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
+
+    // skybox verticles are just the x, y, z positions
     float skyboxVertices[] = {
         // positions          
         -1.0f,  1.0f, -1.0f,
@@ -273,12 +274,17 @@ int main()
     // bind bufffer object to buffer target
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    GLsizei stride = (3 + 2 + 3) * sizeof(float);
     // position attribute
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void *)0);
     glEnableVertexAttribArray(0);
     // texture coord attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void *)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // normal vector attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)((3 + 2) * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
 
     // skybox VBO
@@ -346,11 +352,11 @@ int main()
 
     vector<std::string> skyboxFaces {
         "graphics/skybox/0.png",
-        "graphics/skybox/1.png",
-        "graphics/skybox/2.png",
-        "graphics/skybox/3.png",
-        "graphics/skybox/4.png",
-        "graphics/skybox/5.png",
+        "graphics/skybox/0.png",
+        "graphics/skybox/0.png",
+        "graphics/skybox/0.png",
+        "graphics/skybox/0.png",
+        "graphics/skybox/0.png",
     };
 
     unsigned int cubemapTexture = loadCubemap(skyboxFaces);
@@ -416,10 +422,12 @@ int main()
 
 
         // --- Render World Geometry ---
-        ourShader.use();
-        ourShader.setMat4("view", view); // Use the normal view matrix
-        ourShader.setMat4("projection", projection);
-        ourShader.setInt("texture1", 0); // Tell world shader sampler "texture1" to use texture unit 0
+        textureShader.use();
+        textureShader.setMat4("view", view); // Use the normal view matrix
+        textureShader.setMat4("projection", projection);
+        textureShader.setInt("texture1", 0); // Tell world shader sampler "texture1" to use texture unit 0
+        textureShader.setVec3("lightPos", 12.0f, 60.0f, -12.0f);
+        textureShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 
         glBindVertexArray(VAO); // Bind world geometry VAO
 
@@ -430,7 +438,7 @@ int main()
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
-            ourShader.setMat4("model", model);
+            textureShader.setMat4("model", model);
 
             // Select and bind appropriate 2D texture based on block type
             glActiveTexture(GL_TEXTURE0); // Ensure texture unit 0 is active for 2D textures now
@@ -456,7 +464,7 @@ int main()
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
-            ourShader.setMat4("model", model);
+            textureShader.setMat4("model", model);
 
             glActiveTexture(GL_TEXTURE0); 
 
@@ -464,6 +472,7 @@ int main()
                 drawCube(leaf_textures);
             }
         }
+
         glBindVertexArray(0); // Unbind world VAO
 
         // check and call events and swap the buffers

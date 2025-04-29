@@ -134,7 +134,7 @@ public:
         {
             for (int z = 0; z < CHUNK_SIZE; z++)
             {
-                float rawNoise = fbm((x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler, 8, 0.7f, 1.7f);
+                float rawNoise = fbm((x + origin.x) * noiseScaler, (z + origin.z) * noiseScaler, 4, 0.7f, 1.7f);
                 // Normalize the raw noise from [-1,1] to [0,1]
                 float normalizedNoise = (rawNoise + 1.0f) / 2.0f;
                 // Apply contrast to accentuate differences while still clamping between 0 and 1.
