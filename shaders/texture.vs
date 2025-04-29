@@ -17,7 +17,7 @@ void main()
       FragPos = vec3(model * vec4(aPos, 1.0));
 
       // calculate world-space normal for fragment shader
-      Normal = mat3(transpose(inverse(model))) * aNormal;
+      Normal = mat3(model) * aNormal;
       
       gl_Position = projection * view * vec4(FragPos, 1.0);
       TexCoord = aTexCoord;
