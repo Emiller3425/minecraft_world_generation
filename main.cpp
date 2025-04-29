@@ -1,7 +1,9 @@
 /**
  * TODO:
  * 
- * Multi-threading for mesh creation
+ * Multi-threading for mesh creation -- make the cjunk creation on a seperate thread to avoid the freezing
+ * 
+ * Increase the render range now that we are only passing new chunks when updating the mesh
  * 
  */
 
@@ -159,7 +161,7 @@ int main()
     frustrum.frontFace = frontFace;
     frustrum.rearFace = rearFace;
 
-    // the vetices are laid out by the x,y,z components, then the next 2 lay out how the texture is mapped to the vertices. the last 3 then represent the normal vector perpendicular to each plane the groups of vertices represent.
+    // the vetices are laid out by the x,y,z positions, then the next 2 lay out how the texture is mapped to the vertices. the last 3 then represent the normal vector perpendicular to each plane the groups of vertices represent.
     float vertices[] = {
         // Face -Z (front)
         -0.5f, -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f,
@@ -212,7 +214,6 @@ int main()
 
     // skybox verticles are just the x, y, z positions
     float skyboxVertices[] = {
-        // positions          
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
@@ -256,7 +257,7 @@ int main()
         1.0f, -1.0f,  1.0f
     };
 
-    // only render outside of vertices
+    // only render outside plane of textures, not the inside
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
@@ -444,7 +445,7 @@ int main()
             textureShader.setMat4("model", model);
 
             // Select and bind appropriate 2D texture based on block type
-            glActiveTexture(GL_TEXTURE0); // Ensure texture unit 0 is active for 2D textures now
+            glActiveTexture(GL_TEXTURE0);
             if (renderCube.blockType == GRASS) {
                 drawCube(grass_textures);
             } else if (renderCube.blockType == DIRT) {
@@ -652,40 +653,52 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mes
     // current x and y chunk
     float x_chunk = (float)floor(playerPos.x / 16);
     float z_chunk = (float)floor(playerPos.z / 16);
+    unordered_set<Chunk> newChunks;
+    int renderRange = 10;
 
     // check if surrounding chunks exist
-    int chunk_amount = chunks.size();
+    int chunk_amount = newChunks.size();
         if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
         }
         if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
             chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
         }
         // if we added a new chunk, edit the mesh
-        if (chunks.size() > chunk_amount) {
-            mesh.updateMesh(chunks); // we only want to call this once, we need to track size before and after insert
+        if (newChunks.size() > chunk_amount) {
+            mesh.updateMesh(newChunks); // we only want to call this once, we need to track size before and after insert
         }
+        newChunks.clear();
 }
 
 Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar) {

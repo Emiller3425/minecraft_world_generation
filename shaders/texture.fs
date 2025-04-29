@@ -19,7 +19,7 @@ void main()
         if (texColor.a < 0.1)
                 discard;
         // ambient
-        float ambientStrength = 0.6f;
+        float ambientStrength = 0.3f;
         vec3 ambient = ambientStrength * lightColor;
 
         // diffuse

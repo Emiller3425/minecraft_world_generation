@@ -127,9 +127,7 @@ public:
     }
 
     void updateMesh(unordered_set<Chunk> chunks) {
-        // clear current render cubes
-        //renderCubes.clear();
-        // insert blocks into set
+        // insert new blocks from new chunks into map
         for (const auto &chunk : chunks)
         {
             for (int i = 0; i < chunk.blocks.size(); i++)
