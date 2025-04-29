@@ -126,7 +126,7 @@ public:
         }
     }
 
-    void updateMesh(unordered_set<Chunk> chunks) {
+    void addChunksToMesh(unordered_set<Chunk> chunks) {
         // insert new blocks from new chunks into map
         for (const auto &chunk : chunks)
         {
@@ -222,6 +222,10 @@ public:
                 }
             }
         }
+    }
+
+    void removeChunksFromMesh(unordered_set<Chunk> chunks) {
+        // logic to remove chunks outside of the render range from the mesh
     }
 
 private:

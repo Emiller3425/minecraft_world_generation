@@ -1,9 +1,9 @@
 /**
  * TODO:
  * 
- * Multi-threading for mesh creation -- make the cjunk creation on a seperate thread to avoid the freezing
+ * Multi-threading for mesh and chunk creation -- make the chunk creation on a seperate thread to avoid the freezing -- also needs to be more efficient
  * 
- * Increase the render range now that we are only passing new chunks when updating the mesh
+ * Then and only then increase the render range now that we are only passing new chunks when updating the mesh
  * 
  */
 
@@ -394,7 +394,7 @@ int main()
         checkNewChunks(camera.Position, chunks, mesh);
 
         // Update frustum
-        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 100.0f);
+        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 300.0f);
 
         // Common matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 100.0f);
@@ -438,7 +438,7 @@ int main()
         // render opaque textures first
         for (const auto &renderCube : mesh.renderOpaqueCubes) {
             // Frustum check (using the provided radius)
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
+            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f)) continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
@@ -464,7 +464,7 @@ int main()
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         for (const auto &renderCube : mesh.renderTransparentCubes) {
-             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 50.0f)) continue;
+             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f)) continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, renderCube.blockPosition);
@@ -654,6 +654,7 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mes
     float x_chunk = (float)floor(playerPos.x / 16);
     float z_chunk = (float)floor(playerPos.z / 16);
     unordered_set<Chunk> newChunks;
+    // use for when loop is created to check a larger radius
     int renderRange = 10;
 
     // check if surrounding chunks exist
@@ -696,7 +697,7 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mes
         }
         // if we added a new chunk, edit the mesh
         if (newChunks.size() > chunk_amount) {
-            mesh.updateMesh(newChunks); // we only want to call this once, we need to track size before and after insert
+            mesh.addChunksToMesh(newChunks); // we only want to call this once, we need to track size before and after insert
         }
         newChunks.clear();
 }
