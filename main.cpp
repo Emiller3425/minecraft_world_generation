@@ -1,7 +1,7 @@
 /**
  * TODO:
  * 
- * Multi-threading for the mesh creation and lighting
+ * Multi-threading for mesh creation
  * 
  */
 
