@@ -371,6 +371,9 @@ int main()
     // define list of chunks
     std::unordered_set<Chunk> chunks;
 
+    // define light position
+    glm::vec3 lightPosition = glm::vec3(12.0f, 60.0f, -12.0f);
+
     // define mesh
     Mesh mesh(chunks);
 
@@ -426,7 +429,7 @@ int main()
         textureShader.setMat4("view", view); // Use the normal view matrix
         textureShader.setMat4("projection", projection);
         textureShader.setInt("texture1", 0); // Tell world shader sampler "texture1" to use texture unit 0
-        textureShader.setVec3("lightPos", 12.0f, 60.0f, -12.0f);
+        textureShader.setVec3("lightPos", lightPosition);
         textureShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 
         glBindVertexArray(VAO); // Bind world geometry VAO
