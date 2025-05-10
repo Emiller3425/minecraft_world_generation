@@ -436,7 +436,7 @@ int main()
             frameCount = 0; // Reset frame count for the next second
             lastFPSTime = currentSystemTime; // Reset time for the next second
         }
-        
+
         // process input
         processInput(window);
         glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
@@ -447,7 +447,7 @@ int main()
         checkNewChunks(camera.Position, chunks, mesh);
 
         // Update frustum
-        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 300.0f);
+        // frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 300.0f);
 
         // Common matrices
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 300.0f);
@@ -492,8 +492,8 @@ int main()
         // populate opaque instance data
         for (const auto &renderCube : mesh.renderOpaqueCubes)
         {
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
-                continue;
+            // if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
+            //     continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = translate(model, renderCube.blockPosition);
@@ -577,8 +577,8 @@ int main()
         // populate opaque instance data
         for (const auto &renderCube : mesh.renderTransparentCubes)
         {
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
-                continue;
+            // if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
+            //     continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = translate(model, renderCube.blockPosition);
@@ -845,51 +845,51 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk> &chunks, Mesh &mes
     newChunks.clear();
 }
 
-Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar)
-{
-    Frustrum frustrum;
+// Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar)
+// {
+//     Frustrum frustrum;
 
-    // Far plane size
-    const float halfVSide = zFar * tanf(glm::radians(fovY) * 0.5f);
-    const float halfHSide = halfVSide * aspect;
-    const glm::vec3 frontMultFar = zFar * camera.Front;
+//     // Far plane size
+//     const float halfVSide = zFar * tanf(glm::radians(fovY) * 0.5f);
+//     const float halfHSide = halfVSide * aspect;
+//     const glm::vec3 frontMultFar = zFar * camera.Front;
 
-    // Near plane
-    glm::vec3 nearCenter = camera.Position + camera.Front * zNear;
-    frustrum.frontFace.normal = camera.Front;
-    frustrum.frontFace.distance = -glm::dot(frustrum.frontFace.normal, nearCenter);
+//     // Near plane
+//     glm::vec3 nearCenter = camera.Position + camera.Front * zNear;
+//     frustrum.frontFace.normal = camera.Front;
+//     frustrum.frontFace.distance = -glm::dot(frustrum.frontFace.normal, nearCenter);
 
-    // Far plane
-    glm::vec3 farCenter = camera.Position + frontMultFar;
-    frustrum.rearFace.normal = -camera.Front;
-    frustrum.rearFace.distance = -glm::dot(frustrum.rearFace.normal, farCenter);
+//     // Far plane
+//     glm::vec3 farCenter = camera.Position + frontMultFar;
+//     frustrum.rearFace.normal = -camera.Front;
+//     frustrum.rearFace.distance = -glm::dot(frustrum.rearFace.normal, farCenter);
 
-    // Right plane
-    glm::vec3 rightPoint = camera.Position + frontMultFar - camera.Right * halfHSide;
-    glm::vec3 rightNormal = glm::normalize(glm::cross(camera.Up, rightPoint - camera.Position));
-    frustrum.rightFace.normal = rightNormal;
-    frustrum.rightFace.distance = -glm::dot(rightNormal, camera.Position);
+//     // Right plane
+//     glm::vec3 rightPoint = camera.Position + frontMultFar - camera.Right * halfHSide;
+//     glm::vec3 rightNormal = glm::normalize(glm::cross(camera.Up, rightPoint - camera.Position));
+//     frustrum.rightFace.normal = rightNormal;
+//     frustrum.rightFace.distance = -glm::dot(rightNormal, camera.Position);
 
-    // Left plane
-    glm::vec3 leftPoint = camera.Position + frontMultFar + camera.Right * halfHSide;
-    glm::vec3 leftNormal = glm::normalize(glm::cross(leftPoint - camera.Position, camera.Up));
-    frustrum.leftFace.normal = leftNormal;
-    frustrum.leftFace.distance = -glm::dot(leftNormal, camera.Position);
+//     // Left plane
+//     glm::vec3 leftPoint = camera.Position + frontMultFar + camera.Right * halfHSide;
+//     glm::vec3 leftNormal = glm::normalize(glm::cross(leftPoint - camera.Position, camera.Up));
+//     frustrum.leftFace.normal = leftNormal;
+//     frustrum.leftFace.distance = -glm::dot(leftNormal, camera.Position);
 
-    // Top plane
-    glm::vec3 topPoint = camera.Position + frontMultFar - camera.Up * halfVSide;
-    glm::vec3 topNormal = glm::normalize(glm::cross(camera.Right, topPoint - camera.Position));
-    frustrum.topFace.normal = topNormal;
-    frustrum.topFace.distance = -glm::dot(topNormal, camera.Position);
+//     // Top plane
+//     glm::vec3 topPoint = camera.Position + frontMultFar - camera.Up * halfVSide;
+//     glm::vec3 topNormal = glm::normalize(glm::cross(camera.Right, topPoint - camera.Position));
+//     frustrum.topFace.normal = topNormal;
+//     frustrum.topFace.distance = -glm::dot(topNormal, camera.Position);
 
-    // Bottom plane
-    glm::vec3 bottomPoint = camera.Position + frontMultFar + camera.Up * halfVSide;
-    glm::vec3 bottomNormal = glm::normalize(glm::cross(bottomPoint - camera.Position, camera.Right));
-    frustrum.bottomFace.normal = bottomNormal;
-    frustrum.bottomFace.distance = -glm::dot(bottomNormal, camera.Position);
+//     // Bottom plane
+//     glm::vec3 bottomPoint = camera.Position + frontMultFar + camera.Up * halfVSide;
+//     glm::vec3 bottomNormal = glm::normalize(glm::cross(bottomPoint - camera.Position, camera.Right));
+//     frustrum.bottomFace.normal = bottomNormal;
+//     frustrum.bottomFace.distance = -glm::dot(bottomNormal, camera.Position);
 
-    return frustrum;
-}
+//     return frustrum;
+// }
 
 bool isCubeInFrustrum(const Frustrum &frustum, const glm::vec3 &center, float radius)
 {
