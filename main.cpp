@@ -1,10 +1,15 @@
 /**
  * TODO:
- * 
+ *
  * Multi-threading for mesh and chunk creation -- make the chunk creation on a seperate thread to avoid the freezing -- also needs to be more efficient
- * 
- * Then and only then increase the render range now that we are only passing new chunks when updating the mesh
- * 
+ *
+ * Then and only then increase the render range now that we are only passing new chunks when updating the mesh, currently we are still looping through each chunk to see if we should render so it is still slow,
+ *
+ * - can try instance rendering to lower the draw calls
+ * - also if a chunk is behind the camera we should skip over the blocks in it for rendering,
+ *            will half the overhead --
+ *            this has to be done in the mesh I believe
+ *
  */
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -15,8 +20,10 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <mutex>
+#include <functional>
 #include <thread>
 #include <atomic>
+#include <map>
 #include "headers/shader.h"
 #include "headers/stb_image.h"
 #include "headers/camera.h"
@@ -24,17 +31,18 @@
 #include "headers/mesh.h"
 #include "headers/block.h"
 
-
 using namespace std;
 
-//structs
-struct Plane {
+// structs
+struct Plane
+{
     glm::vec3 normal; // plane
-    float distance;  // distance from origin
+    float distance;   // distance from origin
 };
 
 // might use this might not
-struct Frustrum {
+struct Frustrum
+{
     Plane topFace;
     Plane bottomFace;
 
@@ -52,16 +60,14 @@ void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
 void generateBindTextures(unsigned int &texture, const char *path);
 unsigned int loadCubemap(vector<std::string> faces);
-void drawCube(unsigned int textures[]);
 void drawSkybox(unsigned int cubemapTextureID);
-void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh);
-Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar);
-bool isCubeInFrustrum(const Frustrum& frustum, const glm::vec3& cubeCenter, float radius);
-
+void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk> &chunks, Mesh &mesh);
+Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar);
+bool isCubeInFrustrum(const Frustrum &frustum, const glm::vec3 &cubeCenter, float radius);
 
 // window size
-const unsigned int SRC_WIDTH = 800;
-const unsigned int SRC_HEIGHT = 600;
+const unsigned int SRC_WIDTH = 1200;
+const unsigned int SRC_HEIGHT = 800;
 
 // camera shit
 Camera camera(glm::vec3(8.0f, 20.0f, 8.0f));
@@ -84,6 +90,12 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+// fps counters
+double lastFPSTime = 0.0;
+int frameCount = 0;
+
+// global mutex
+std::mutex worldDataMutex;
 
 int main()
 {
@@ -131,7 +143,7 @@ int main()
     }
     // define shaders
     Shader textureShader("shaders/texture.vs", "shaders/texture.fs");
-        
+
     Shader skyboxShader("shaders/skybox.vs", "shaders/skybox.fs");
 
     // tell openGL the size of the window
@@ -151,7 +163,6 @@ int main()
     frontFace.distance = 4.0f;
     rearFace.normal = camera.Position + glm::vec3(0.0f, 0.0f, -4.0f);
     rearFace.distance = 4.0f;
-
 
     // define frustrum faces
     frustrum.topFace = topFace;
@@ -211,51 +222,49 @@ int main()
         0.5f, 0.5f, -0.5f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f,
         -0.5f, 0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f};
 
-
     // skybox verticles are just the x, y, z positions
     float skyboxVertices[] = {
-        -1.0f,  1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
         -1.0f, -1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f, -1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
         1.0f, -1.0f, -1.0f,
-        1.0f, -1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
 
-        -1.0f, -1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
 
-        -1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f, -1.0f,
-        1.0f,  1.0f,  1.0f,
-        1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f,  1.0f,
-        -1.0f,  1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
 
         -1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
+        -1.0f, -1.0f, 1.0f,
         1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
-        -1.0f, -1.0f,  1.0f,
-        1.0f, -1.0f,  1.0f
-    };
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f};
 
     // only render outside plane of textures, not the inside
     glEnable(GL_CULL_FACE);
@@ -284,9 +293,35 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void *)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     // normal vector attribute
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)((3 + 2) * sizeof(float)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void *)((3 + 2) * sizeof(float)));
     glEnableVertexAttribArray(2);
 
+    // instance VBO
+    unsigned int instanceMatrixVBO;
+    glGenBuffers(1, &instanceMatrixVBO);
+    glBindBuffer(GL_ARRAY_BUFFER, instanceMatrixVBO);
+    const int MAX_INSTANCES_PER_BATCH = 100000;
+    glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES_PER_BATCH * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
+
+    // Attribute location 3 (first vec4 of the mat4)
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)0);
+    glVertexAttribDivisor(3, 1); // Tell OpenGL this is an instanced vertex attribute (advances once per instance)
+
+    // Attribute location 4 (second vec4 of the mat4)
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(sizeof(glm::vec4)));
+    glVertexAttribDivisor(4, 1);
+
+    // Attribute location 5 (third vec4 of the mat4)
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(2 * sizeof(glm::vec4)));
+    glVertexAttribDivisor(5, 1);
+
+    // Attribute location 6 (fourth vec4 of the mat4)
+    glEnableVertexAttribArray(6);
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, sizeof(glm::mat4), (void *)(3 * sizeof(glm::vec4)));
+    glVertexAttribDivisor(6, 1);
 
     // skybox VBO
     unsigned int skyboxVBO, skyboxVAO;
@@ -298,7 +333,7 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
 
     // WIREFRAME DRAWING
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -312,7 +347,7 @@ int main()
         generateBindTextures(grass_textures[i], path.c_str());
     }
     unsigned int texture4 = 0;
-    unsigned int dirt_textures[1] = {texture4};
+    unsigned int dirt_textures[3] = {texture4};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/dirt_block/" + to_string(i) + ".png";
@@ -320,7 +355,7 @@ int main()
     }
 
     unsigned int texture5 = 0;
-    unsigned int sand_textures[1] = {texture5};
+    unsigned int sand_textures[3] = {texture5};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/sand_block/" + to_string(i) + ".png";
@@ -328,7 +363,7 @@ int main()
     }
 
     unsigned int texture6 = 0;
-    unsigned int tree_textures[1] = {texture6};
+    unsigned int tree_textures[3] = {texture6};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/tree_block/" + to_string(i) + ".png";
@@ -336,7 +371,7 @@ int main()
     }
 
     unsigned int texture7 = 0;
-    unsigned int leaf_textures[1] = {texture7};
+    unsigned int leaf_textures[3] = {texture7};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/leaf_block/" + to_string(i) + ".png";
@@ -344,26 +379,27 @@ int main()
     }
 
     unsigned int texture8 = 0;
-    unsigned int water_textures[1] = {texture8};
+    unsigned int water_textures[3] = {texture8};
     for (int i = 0; i < 3; i++)
     {
         string path = "graphics/water_block/" + to_string(i) + ".png";
         generateBindTextures(water_textures[i], path.c_str());
     }
 
-    vector<std::string> skyboxFaces {
-        "graphics/skybox/0.png",
-        "graphics/skybox/0.png",
-        "graphics/skybox/0.png",
-        "graphics/skybox/0.png",
-        "graphics/skybox/0.png",
-        "graphics/skybox/0.png",
+    vector<std::string> skyboxFaces{
+        "graphics/skybox_1/0.png",
+        "graphics/skybox_1/1.png",
+        "graphics/skybox_1/2.png",
+        "graphics/skybox_1/3.png",
+        "graphics/skybox_1/4.png",
+        "graphics/skybox_1/5.png",
     };
 
     unsigned int cubemapTexture = loadCubemap(skyboxFaces);
 
     // check that we were able to create cubemap texture
-    if (cubemapTexture == 0) {
+    if (cubemapTexture == 0)
+    {
         cerr << "Failed to load cubemap texture. Exiting." << endl;
         glfwTerminate();
         return -1;
@@ -378,32 +414,48 @@ int main()
     // define mesh
     Mesh mesh(chunks);
 
-       while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(window))
     {
         // calculate deltaTime
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
+
+        // --- FPS Counter Logic ---
+        frameCount++;
+        double currentSystemTime = glfwGetTime(); // Use a separate variable for FPS system time
+        double elapsedFPSTime = currentSystemTime - lastFPSTime;
+
+        if (elapsedFPSTime >= 1.0) { // Update FPS display about once per second
+            double fps = (double)frameCount / elapsedFPSTime;
+            char windowTitle[256];
+            // Using your original window title "Fuck Me" and adding FPS
+            sprintf(windowTitle, "Fuck Me - FPS: %.2f (%.3f ms/frame)", fps, 1000.0 / fps);
+            glfwSetWindowTitle(window, windowTitle);
+
+            frameCount = 0; // Reset frame count for the next second
+            lastFPSTime = currentSystemTime; // Reset time for the next second
+        }
+        
         // process input
         processInput(window);
         glClearColor(0.6f, 0.6f, 0.9f, 1.0f);
         glEnable(GL_DEPTH_TEST); // Ensure depth testing is enabled before clearing
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Check for new chunks to load/mesh
+        // Check for new chunks to load/mesh - runs synchronously
         checkNewChunks(camera.Position, chunks, mesh);
 
         // Update frustum
         frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 300.0f);
 
         // Common matrices
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 300.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
-
         // --- Render Skybox ---
-        glDepthFunc(GL_LEQUAL);      // Change depth function so fragments equal to depth buffer value pass (skybox sits at far plane)
-        glDepthMask(GL_FALSE);     // Disable writing to the depth buffer for the skybox
+        glDepthFunc(GL_LEQUAL); // Change depth function so fragments equal to depth buffer value pass (skybox sits at far plane)
+        glDepthMask(GL_FALSE);  // Disable writing to the depth buffer for the skybox
 
         skyboxShader.use();
         glm::mat4 skyboxView = glm::mat4(glm::mat3(view)); // Remove translation from the view matrix
@@ -412,18 +464,16 @@ int main()
         skyboxShader.setInt("skybox", 0); // Use texture unit 0
 
         glBindVertexArray(skyboxVAO);
-        glActiveTexture(GL_TEXTURE0); // Activate texture unit 0
+        glActiveTexture(GL_TEXTURE0);                       // Activate texture unit 0
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture); // Bind the cubemap texture
-        glDrawArrays(GL_TRIANGLES, 0, 36); // Draw the skybox
-        glBindVertexArray(0); // Unbind skybox VAO
-
+        glDrawArrays(GL_TRIANGLES, 0, 36);                  // Draw the skybox
+        glBindVertexArray(0);                               // Unbind skybox VAO
 
         // --- Restore default state for world rendering ---
-        glDepthMask(GL_TRUE);      // Re-enable depth writing **
-        glDepthFunc(GL_LESS);      // Restore default depth function
-        glEnable(GL_CULL_FACE);    // Ensure face culling is enabled ** (If you disabled it for skybox)
-        glCullFace(GL_BACK);       // Restore back-face culling **
-
+        glDepthMask(GL_TRUE);   // Re-enable depth writing **
+        glDepthFunc(GL_LESS);   // Restore default depth function
+        glEnable(GL_CULL_FACE); // Ensure face culling is enabled ** (If you disabled it for skybox)
+        glCullFace(GL_BACK);    // Restore back-face culling **
 
         // --- Render World Geometry ---
         textureShader.use();
@@ -434,28 +484,85 @@ int main()
         textureShader.setVec3("lightColor", 1.0f, 1.0f, 1.0f);
 
         glBindVertexArray(VAO); // Bind world geometry VAO
+        glActiveTexture(GL_TEXTURE0);
 
-        // render opaque textures first
-        for (const auto &renderCube : mesh.renderOpaqueCubes) {
-            // Frustum check (using the provided radius)
-            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f)) continue;
+        // prepare opaque cubes for rendering
+        std::map<int, std::vector<glm::mat4>> opaqueInstanceMatrices;
+
+        // populate opaque instance data
+        for (const auto &renderCube : mesh.renderOpaqueCubes)
+        {
+            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
+                continue;
 
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, renderCube.blockPosition);
-            textureShader.setMat4("model", model);
+            model = translate(model, renderCube.blockPosition);
+            opaqueInstanceMatrices[renderCube.blockType].push_back(model);
+        }
 
-            // Select and bind appropriate 2D texture based on block type
-            glActiveTexture(GL_TEXTURE0);
-            if (renderCube.blockType == GRASS) {
-                drawCube(grass_textures);
-            } else if (renderCube.blockType == DIRT) {
-                drawCube(dirt_textures);
-            }  else if (renderCube.blockType == TREE) {
-                drawCube(tree_textures);
-            } else if (renderCube.blockType == WATER) {
-                 drawCube(water_textures);
-            }else if (renderCube.blockType == SAND){
-                drawCube(sand_textures);
+        // render opaque cubes
+        for (const auto &pair : opaqueInstanceMatrices)
+        {
+            int blockType = pair.first;
+            const std::vector<glm::mat4> &matrices = pair.second;
+
+            if (matrices.empty())
+                continue;
+            // Bind and upload instance data ONCE per block type
+            glBindBuffer(GL_ARRAY_BUFFER, instanceMatrixVBO);
+            size_t instancesToDraw = matrices.size();
+            if (instancesToDraw > MAX_INSTANCES_PER_BATCH)
+            {
+                std::cerr << "Warning: Instance Overload for opaque block type " << blockType
+                          << ". Clamping to " << MAX_INSTANCES_PER_BATCH << std::endl;
+                instancesToDraw = MAX_INSTANCES_PER_BATCH;
+            }
+            if (instancesToDraw == 0)
+                continue; // Nothing to draw for this batch
+
+            glBufferSubData(GL_ARRAY_BUFFER, 0, instancesToDraw * sizeof(glm::mat4), matrices.data());
+
+            // Now, draw based on block type and its texture configuration
+            if (blockType == GRASS)
+            {
+
+                // Grass: 3 textures - side, bottom, top (matching drawCube logic)
+                // Side faces (vertices 0-23, 4 faces * 6 vertices)
+                glBindTexture(GL_TEXTURE_2D, grass_textures[0]); // 0
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 24, instancesToDraw);
+
+                // Bottom face (vertices 24-29, 1 face * 6 vertices)
+                glBindTexture(GL_TEXTURE_2D, grass_textures[2]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 30, instancesToDraw);
+
+                // Top face (vertices 30-35, 1 face * 6 vertices)
+                glBindTexture(GL_TEXTURE_2D, grass_textures[1]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            else if (blockType == DIRT)
+            {
+                glBindTexture(GL_TEXTURE_2D, dirt_textures[0]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            else if (blockType == TREE)
+            {
+                glBindTexture(GL_TEXTURE_2D, tree_textures[0]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            else if (blockType == WATER)
+            { // Assuming water is opaque here and uses one texture
+                glBindTexture(GL_TEXTURE_2D, water_textures[0]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            else if (blockType == SAND)
+            {
+                glBindTexture(GL_TEXTURE_2D, sand_textures[0]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            // Add other opaque block types here. If they have multiple face textures
+            else
+            {
+                std::cerr << "Warning: Unhandled opaque block type or missing texture setup for type: " << blockType << std::endl;
             }
         }
 
@@ -463,17 +570,52 @@ int main()
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        for (const auto &renderCube : mesh.renderTransparentCubes) {
-             if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f)) continue;
+        std::map<int, std::vector<glm::mat4>> transparentInstanceMatrices;
+
+        glActiveTexture(GL_TEXTURE0);
+
+        // populate opaque instance data
+        for (const auto &renderCube : mesh.renderTransparentCubes)
+        {
+            if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
+                continue;
 
             glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, renderCube.blockPosition);
-            textureShader.setMat4("model", model);
+            model = translate(model, renderCube.blockPosition);
+            transparentInstanceMatrices[renderCube.blockType].push_back(model);
+        }
 
-            glActiveTexture(GL_TEXTURE0); 
+        // render opaque cubes
+        for (const auto &pair : transparentInstanceMatrices)
+        {
+            int blockType = pair.first;
+            const std::vector<glm::mat4> &matrices = pair.second;
 
-            if (renderCube.blockType == LEAF) { // Transparent leaves
-                drawCube(leaf_textures);
+            if (matrices.empty())
+                continue;
+            // Bind and upload instance data ONCE per block type
+            glBindBuffer(GL_ARRAY_BUFFER, instanceMatrixVBO);
+            size_t instancesToDraw = matrices.size();
+            if (instancesToDraw > MAX_INSTANCES_PER_BATCH)
+            {
+                std::cerr << "Warning: Instance Overload for opaque block type " << blockType
+                          << ". Clamping to " << MAX_INSTANCES_PER_BATCH << std::endl;
+                instancesToDraw = MAX_INSTANCES_PER_BATCH;
+            }
+            if (instancesToDraw == 0)
+                continue; 
+
+            glBufferSubData(GL_ARRAY_BUFFER, 0, instancesToDraw * sizeof(glm::mat4), matrices.data());
+
+            if (blockType == LEAF)
+            {
+                glBindTexture(GL_TEXTURE_2D, leaf_textures[0]);
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
+            }
+            // Add other transparent block types here
+            else
+            {
+                std::cerr << "Warning: Unhandled opaque block type or missing texture setup for type: " << blockType << std::endl;
             }
         }
 
@@ -486,7 +628,10 @@ int main()
 
     // de-allocate all resources once they've outlived their purpose:
     glDeleteVertexArrays(1, &VAO);
+    glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &skyboxVBO);
+    glDeleteBuffers(1, &instanceMatrixVBO);
 
     // terminate glfw de-allocating all used resources
     glfwTerminate();
@@ -573,8 +718,9 @@ void generateBindTextures(unsigned int &texture, const char *path)
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
     }
-    else {
-        cout << "Failed to load texture\n";
+    else
+    {
+        cerr << "Failed to load texture\n";
     }
     stbi_image_free(data);
 }
@@ -593,12 +739,12 @@ unsigned int loadCubemap(vector<std::string> faces)
         if (data)
         {
             GLenum format = GL_RGB; // Assuming RGB, adjust if your images have alpha
-             if (nrChannels == 1)
-                 format = GL_RED;
-             else if (nrChannels == 3)
-                 format = GL_RGB;
-             else if (nrChannels == 4)
-                 format = GL_RGBA;
+            if (nrChannels == 1)
+                format = GL_RED;
+            else if (nrChannels == 3)
+                format = GL_RGB;
+            else if (nrChannels == 4)
+                format = GL_RGBA;
 
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, // Target face (+X, -X, +Y, ...)
                          0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
@@ -607,9 +753,9 @@ unsigned int loadCubemap(vector<std::string> faces)
         else
         {
             std::cerr << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
-            stbi_image_free(data); // Even if data is null, free attempts are safe
-             glDeleteTextures(1, &textureID); // Clean up texture ID if loading fails
-             return 0; // Return 0 to indicate failure
+            stbi_image_free(data);           // Even if data is null, free attempts are safe
+            glDeleteTextures(1, &textureID); // Clean up texture ID if loading fails
+            return 0;                        // Return 0 to indicate failure
         }
     }
     stbi_set_flip_vertically_on_load(true); // Set back to true for other textures if needed
@@ -626,22 +772,8 @@ unsigned int loadCubemap(vector<std::string> faces)
     return textureID;
 }
 
-void drawCube(unsigned int textures[])
+void drawSkybox(unsigned int cubemapTextureID)
 {
-    // 2) Draw the four side faces  (indices 0..23) with 0.png
-    glBindTexture(GL_TEXTURE_2D, textures[0]);
-    glDrawArrays(GL_TRIANGLES, 0, 24);
-
-    // 3) Draw the bottom face (indices 24..29) with 2.png
-    glBindTexture(GL_TEXTURE_2D, textures[2]);
-    glDrawArrays(GL_TRIANGLES, 24, 6);
-
-    // 4) Draw the top face (indices 30..35) with 1.png
-    glBindTexture(GL_TEXTURE_2D, textures[1]);
-    glDrawArrays(GL_TRIANGLES, 30, 6);
-}
-
-void drawSkybox(unsigned int cubemapTextureID) {
     // Bind the single cubemap texture ID
     glActiveTexture(GL_TEXTURE0); // Ensure texture unit 0 is active (usually default)
     glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTextureID);
@@ -649,7 +781,8 @@ void drawSkybox(unsigned int cubemapTextureID) {
     glDrawArrays(GL_TRIANGLES, 0, 36);
 }
 
-void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mesh){
+void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk> &chunks, Mesh &mesh)
+{
     // current x and y chunk
     float x_chunk = (float)floor(playerPos.x / 16);
     float z_chunk = (float)floor(playerPos.z / 16);
@@ -659,50 +792,61 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk>& chunks, Mesh& mes
 
     // check if surrounding chunks exist
     int chunk_amount = newChunks.size();
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
-        }
-        if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end()) {
-            chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-            newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
-        }
-        // if we added a new chunk, edit the mesh
-        if (newChunks.size() > chunk_amount) {
-            mesh.addChunksToMesh(newChunks); // we only want to call this once, we need to track size before and after insert
-        }
-        newChunks.clear();
+    if (chunks.find(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, z_chunk * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk)*Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk)*Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk + 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk - 1) * Chunk::CHUNK_SIZE)));
+    }
+    if (chunks.find(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE))) == chunks.end())
+    {
+        chunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+        newChunks.insert(Chunk(glm::vec3((x_chunk - 1) * Chunk::CHUNK_SIZE, 0.0f, (z_chunk + 1) * Chunk::CHUNK_SIZE)));
+    }
+    // if we added a new chunk, edit the mesh
+    if (newChunks.size() > chunk_amount)
+    {
+        mesh.addChunksToMesh(newChunks); // we only want to call this once, we need to track size before and after insert
+    }
+    newChunks.clear();
 }
 
-Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY, float zNear, float zFar) {
+Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar)
+{
     Frustrum frustrum;
 
     // Far plane size
@@ -747,20 +891,22 @@ Frustrum createFrustrumFromCamera(const Camera& camera, float aspect, float fovY
     return frustrum;
 }
 
-bool isCubeInFrustrum(const Frustrum& frustum, const glm::vec3& center, float radius) {
+bool isCubeInFrustrum(const Frustrum &frustum, const glm::vec3 &center, float radius)
+{
     Plane planes[6] = {
         frustum.frontFace,
         frustum.rearFace,
         frustum.leftFace,
         frustum.rightFace,
         frustum.topFace,
-        frustum.bottomFace
-    };
+        frustum.bottomFace};
 
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 6; i++)
+    {
         // Dot product to check distance from the plane
         float distance = glm::dot(planes[i].normal, center) + planes[i].distance;
-        if (distance < -radius) {
+        if (distance < -radius)
+        {
             // The cube is completely outside this plane
             return false;
         }

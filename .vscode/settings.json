@@ -63,6 +63,8 @@
         "compare": "cpp",
         "concepts": "cpp",
         "exception": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "__hash_table": "cpp",
+        "charconv": "cpp"
     }
 }
