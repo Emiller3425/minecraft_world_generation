@@ -5,10 +5,9 @@
  *
  * Then and only then increase the render range now that we are only passing new chunks when updating the mesh, currently we are still looping through each chunk to see if we should render so it is still slow,
  *
- * - can try instance rendering to lower the draw calls
- * - also if a chunk is behind the camera we should skip over the blocks in it for rendering,
- *            will half the overhead --
- *            this has to be done in the mesh I believe
+ * - mesh based frustrum calling
+ *       after this add camera based occlision culling
+ *       then we can move on to new features
  *
  */
 
@@ -30,28 +29,10 @@
 #include "headers/chunk.h"
 #include "headers/mesh.h"
 #include "headers/block.h"
+#include "headers/frustrum.h"
+#include "headers/plane.h"
 
 using namespace std;
-
-// structs
-struct Plane
-{
-    glm::vec3 normal; // plane
-    float distance;   // distance from origin
-};
-
-// might use this might not
-struct Frustrum
-{
-    Plane topFace;
-    Plane bottomFace;
-
-    Plane rightFace;
-    Plane leftFace;
-
-    Plane frontFace;
-    Plane rearFace;
-};
 
 // buffer call back and input funciton definitions
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -300,7 +281,7 @@ int main()
     unsigned int instanceMatrixVBO;
     glGenBuffers(1, &instanceMatrixVBO);
     glBindBuffer(GL_ARRAY_BUFFER, instanceMatrixVBO);
-    const int MAX_INSTANCES_PER_BATCH = 100000;
+    const int MAX_INSTANCES_PER_BATCH = 1000000;
     glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES_PER_BATCH * sizeof(glm::mat4), nullptr, GL_DYNAMIC_DRAW);
 
     // Attribute location 3 (first vec4 of the mat4)
@@ -334,6 +315,25 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+
+    // --- VAO/VBO for Frustum Lines ---
+    unsigned int frustumVAO, frustumVBO;
+    glGenVertexArrays(1, &frustumVAO);
+    glGenBuffers(1, &frustumVBO);
+
+    glBindVertexArray(frustumVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, frustumVBO);
+
+    // We'll store 12 lines * 2 vertices/line = 24 vertices
+    // Each vertex has 3 floats (x, y, z)
+    glBufferData(GL_ARRAY_BUFFER, 24 * 3 * sizeof(float), nullptr, GL_DYNAMIC_DRAW); // Dynamic draw because corners change
+
+    // Position attribute (location 0)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0); // Unbind VBO
+    glBindVertexArray(0);             // Unbind VAO
 
     // WIREFRAME DRAWING
     // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -426,14 +426,15 @@ int main()
         double currentSystemTime = glfwGetTime(); // Use a separate variable for FPS system time
         double elapsedFPSTime = currentSystemTime - lastFPSTime;
 
-        if (elapsedFPSTime >= 1.0) { // Update FPS display about once per second
+        if (elapsedFPSTime >= 1.0)
+        { // Update FPS display about once per second
             double fps = (double)frameCount / elapsedFPSTime;
             char windowTitle[256];
             // Using your original window title "Fuck Me" and adding FPS
             sprintf(windowTitle, "Fuck Me - FPS: %.2f (%.3f ms/frame)", fps, 1000.0 / fps);
             glfwSetWindowTitle(window, windowTitle);
 
-            frameCount = 0; // Reset frame count for the next second
+            frameCount = 0;                  // Reset frame count for the next second
             lastFPSTime = currentSystemTime; // Reset time for the next second
         }
 
@@ -443,14 +444,17 @@ int main()
         glEnable(GL_DEPTH_TEST); // Ensure depth testing is enabled before clearing
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 40.0f);
+
         // Check for new chunks to load/mesh - runs synchronously
         checkNewChunks(camera.Position, chunks, mesh);
 
-        // Update frustum
-        // frustrum = createFrustrumFromCamera(camera, (float)SRC_WIDTH / (float)SRC_HEIGHT, camera.Zoom, 0.1f, 300.0f);
+        // update mesh
+        mesh.updateMesh(chunks, frustrum);
+ 
 
         // Common matrices
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 300.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SRC_WIDTH / (float)SRC_HEIGHT, 0.1f, 40.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
         // --- Render Skybox ---
@@ -492,8 +496,6 @@ int main()
         // populate opaque instance data
         for (const auto &renderCube : mesh.renderOpaqueCubes)
         {
-            // if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
-            //     continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = translate(model, renderCube.blockPosition);
@@ -525,16 +527,12 @@ int main()
             // Now, draw based on block type and its texture configuration
             if (blockType == GRASS)
             {
-
-                // Grass: 3 textures - side, bottom, top (matching drawCube logic)
                 // Side faces (vertices 0-23, 4 faces * 6 vertices)
                 glBindTexture(GL_TEXTURE_2D, grass_textures[0]); // 0
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 24, instancesToDraw);
-
                 // Bottom face (vertices 24-29, 1 face * 6 vertices)
                 glBindTexture(GL_TEXTURE_2D, grass_textures[2]);
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 30, instancesToDraw);
-
                 // Top face (vertices 30-35, 1 face * 6 vertices)
                 glBindTexture(GL_TEXTURE_2D, grass_textures[1]);
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
@@ -559,7 +557,7 @@ int main()
                 glBindTexture(GL_TEXTURE_2D, sand_textures[0]);
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 36, instancesToDraw);
             }
-            // Add other opaque block types here. If they have multiple face textures
+            // Add other opaque block types here.
             else
             {
                 std::cerr << "Warning: Unhandled opaque block type or missing texture setup for type: " << blockType << std::endl;
@@ -574,18 +572,16 @@ int main()
 
         glActiveTexture(GL_TEXTURE0);
 
-        // populate opaque instance data
+        // populate transparent instance data
         for (const auto &renderCube : mesh.renderTransparentCubes)
         {
-            // if (!isCubeInFrustrum(frustrum, renderCube.blockPosition + glm::vec3(0.5f), 300.0f))
-            //     continue;
 
             glm::mat4 model = glm::mat4(1.0f);
             model = translate(model, renderCube.blockPosition);
             transparentInstanceMatrices[renderCube.blockType].push_back(model);
         }
 
-        // render opaque cubes
+        // render transparent cubes
         for (const auto &pair : transparentInstanceMatrices)
         {
             int blockType = pair.first;
@@ -603,7 +599,7 @@ int main()
                 instancesToDraw = MAX_INSTANCES_PER_BATCH;
             }
             if (instancesToDraw == 0)
-                continue; 
+                continue;
 
             glBufferSubData(GL_ARRAY_BUFFER, 0, instancesToDraw * sizeof(glm::mat4), matrices.data());
 
@@ -845,51 +841,51 @@ void checkNewChunks(glm::vec3 playerPos, unordered_set<Chunk> &chunks, Mesh &mes
     newChunks.clear();
 }
 
-// Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar)
-// {
-//     Frustrum frustrum;
+Frustrum createFrustrumFromCamera(const Camera &camera, float aspect, float fovY, float zNear, float zFar)
+{
+    Frustrum frustrum;
 
-//     // Far plane size
-//     const float halfVSide = zFar * tanf(glm::radians(fovY) * 0.5f);
-//     const float halfHSide = halfVSide * aspect;
-//     const glm::vec3 frontMultFar = zFar * camera.Front;
+    // Far plane size
+    const float halfVSide = zFar * tanf(glm::radians(fovY) * 0.5f);
+    const float halfHSide = halfVSide * aspect;
+    const glm::vec3 frontMultFar = zFar * camera.Front;
 
-//     // Near plane
-//     glm::vec3 nearCenter = camera.Position + camera.Front * zNear;
-//     frustrum.frontFace.normal = camera.Front;
-//     frustrum.frontFace.distance = -glm::dot(frustrum.frontFace.normal, nearCenter);
+    // Near plane
+    glm::vec3 nearCenter = camera.Position + camera.Front * zNear;
+    frustrum.frontFace.normal = camera.Front;
+    frustrum.frontFace.distance = -glm::dot(frustrum.frontFace.normal, nearCenter);
 
-//     // Far plane
-//     glm::vec3 farCenter = camera.Position + frontMultFar;
-//     frustrum.rearFace.normal = -camera.Front;
-//     frustrum.rearFace.distance = -glm::dot(frustrum.rearFace.normal, farCenter);
+    // Far plane
+    glm::vec3 farCenter = camera.Position + frontMultFar;
+    frustrum.rearFace.normal = -camera.Front;
+    frustrum.rearFace.distance = -glm::dot(frustrum.rearFace.normal, farCenter);
 
-//     // Right plane
-//     glm::vec3 rightPoint = camera.Position + frontMultFar - camera.Right * halfHSide;
-//     glm::vec3 rightNormal = glm::normalize(glm::cross(camera.Up, rightPoint - camera.Position));
-//     frustrum.rightFace.normal = rightNormal;
-//     frustrum.rightFace.distance = -glm::dot(rightNormal, camera.Position);
+    // Right plane
+    glm::vec3 rightPoint = camera.Position + frontMultFar - camera.Right * halfHSide;
+    glm::vec3 rightNormal = glm::normalize(glm::cross(camera.Up, rightPoint - camera.Position));
+    frustrum.rightFace.normal = rightNormal;
+    frustrum.rightFace.distance = -glm::dot(rightNormal, camera.Position);
 
-//     // Left plane
-//     glm::vec3 leftPoint = camera.Position + frontMultFar + camera.Right * halfHSide;
-//     glm::vec3 leftNormal = glm::normalize(glm::cross(leftPoint - camera.Position, camera.Up));
-//     frustrum.leftFace.normal = leftNormal;
-//     frustrum.leftFace.distance = -glm::dot(leftNormal, camera.Position);
+    // Left plane
+    glm::vec3 leftPoint = camera.Position + frontMultFar + camera.Right * halfHSide;
+    glm::vec3 leftNormal = glm::normalize(glm::cross(leftPoint - camera.Position, camera.Up));
+    frustrum.leftFace.normal = leftNormal;
+    frustrum.leftFace.distance = -glm::dot(leftNormal, camera.Position);
 
-//     // Top plane
-//     glm::vec3 topPoint = camera.Position + frontMultFar - camera.Up * halfVSide;
-//     glm::vec3 topNormal = glm::normalize(glm::cross(camera.Right, topPoint - camera.Position));
-//     frustrum.topFace.normal = topNormal;
-//     frustrum.topFace.distance = -glm::dot(topNormal, camera.Position);
+    // Top plane
+    glm::vec3 topPoint = camera.Position + frontMultFar - camera.Up * halfVSide;
+    glm::vec3 topNormal = glm::normalize(glm::cross(camera.Right, topPoint - camera.Position));
+    frustrum.topFace.normal = topNormal;
+    frustrum.topFace.distance = -glm::dot(topNormal, camera.Position);
 
-//     // Bottom plane
-//     glm::vec3 bottomPoint = camera.Position + frontMultFar + camera.Up * halfVSide;
-//     glm::vec3 bottomNormal = glm::normalize(glm::cross(bottomPoint - camera.Position, camera.Right));
-//     frustrum.bottomFace.normal = bottomNormal;
-//     frustrum.bottomFace.distance = -glm::dot(bottomNormal, camera.Position);
+    // Bottom plane
+    glm::vec3 bottomPoint = camera.Position + frontMultFar + camera.Up * halfVSide;
+    glm::vec3 bottomNormal = glm::normalize(glm::cross(bottomPoint - camera.Position, camera.Right));
+    frustrum.bottomFace.normal = bottomNormal;
+    frustrum.bottomFace.distance = -glm::dot(bottomNormal, camera.Position);
 
-//     return frustrum;
-// }
+    return frustrum;
+}
 
 bool isCubeInFrustrum(const Frustrum &frustum, const glm::vec3 &center, float radius)
 {

@@ -18,7 +18,7 @@ void main()
     {
       // calculate world position for fragment shader
       gl_Position = projection * view * aInstanceModel * vec4(aPos, 1.0);
-      FragPos = vec3(model * vec4(aPos, 1.0));
+      FragPos = vec3(aInstanceModel * vec4(aPos, 1.0));
 
       // calculate world-space normal for fragment shader
       Normal = mat3(aInstanceModel) * aNormal;
